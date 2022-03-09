@@ -1,0 +1,115 @@
+// ____________________
+//
+// PIG-CUSTOM-PART docs
+// ____________________
+
+// Have you ever wanted to make a custom part?
+// No? Too bad you're learning.
+
+// ##################################################
+
+// We start here:
+-- local NUM_PARTS = // whatever number it is
+
+// Add one to the current number.
+// Congratulations, you have successfully added a part with no functionality or anything!
+
+// ###### HOW DO I ACTUALLY DO THINGS WITH IT? ######
+
+// I'm not going to go in depth with how to add special interactions due to the code in general being messy and hard to explain.
+
+// However, I will atleast guide you through stats and the visual process of things.
+
+// ###### ASSIGING STATS ###########################
+
+// Fairly straight forward.
+
+// Find these tables:
+
+-- local pigpartweights = {
+-- 	// parts here
+-- }
+
+-- local pigpartbuoyancies = {
+-- // parts here
+-- }
+
+-- local pigenginestrengths = {
+-- // parts here
+-- }
+
+-- local pigpartnames = {
+-- // parts here
+-- }
+
+// Add another slot in all of these after all of the existing parts.
+// Set the values to whatever you wish for your part(s).
+
+// Congratulations, you have successfully added stats for a part!
+
+// ###### PART VISUALS ###########################
+
+// Less straight forward.
+
+// Find the "MobjThinker" hook for MT_TESTWALL
+
+// Find the first instance of:
+
+-- if not mobj.finishspawn then
+
+// Proceed to:
+
+-- if mobj.parttype == 4 then
+
+// Now that you have found the massive if statement for part visuals, go to the bottom and add another elseif for your part number.
+
+// The following are required to know:
+// ________________________________________________
+
+-- mobj.(____).frame // Default: A
+
+// Fairly straight forward. This sets the frame of the specified side of the part. (its literally just default srb2 stuff)
+
+-- mobj.(____).distancescale // Default: 23
+
+// Only works on vertical sides of a part, top and bottom do not use this variable. This sets the horizontal distance of the side from the base.
+
+-- mobj.(____).heightscale // Vertical Default: 23 | Horizontal Default: 46
+
+// Works for all sides of a part. This sets the vertical distance of the side from the base.
+
+-- mobj.(____).angleadd // Default: 0
+
+// WARNING: This variable alters collision in unstable ways, use with caution. Adds the specified angle onto the sides default angle.
+// ________________________________________________
+
+// In order to make sure you understand what to do, I have made an example part which uses everything shown here:
+
+-- elseif mobj.parttype == 69 then
+--		mobj.leftwall.frame = D // Metal side sprite
+--		mobj.rightwall.frame = D
+--		mobj.frontwall.frame = D
+--		mobj.backwall.frame = D
+--		mobj.topwall.frame = E // Metal top sprite
+--		mobj.frame = F	// Metal bottom sprite
+--		
+--		mobj.leftwall.distancescale = 16 // Smaller distance from the center
+--		mobj.rightwall.distancescale = 16
+--		
+--		mobj.frontwall.heightscale = 54 // Higher distance from the base
+--		mobj.backwall.heightscale = 54
+--		
+--		mobj.angleadd = ANGLE_45 // Rotate the base by 45 degrees
+--	end
+
+// If this looks like a jumbled mess of papersprites, then congratulations, you imported it correctly (assuming you changed the part number)!
+
+// ###### THE END? ###########################
+
+// As of now, this is indeed the end of the custom part tutorial.
+// I wish i could include more, but the sheer complexity (and sometimes stupidity) of the code prevents me from fully documenting it without confusion on the readers half and large time consumption on my half.
+
+
+// - Turnip 
+// 11:59 PM 
+// 3/4/2022

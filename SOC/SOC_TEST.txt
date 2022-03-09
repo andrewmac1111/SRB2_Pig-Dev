@@ -1,0 +1,132 @@
+Freeslot
+SPR_PVBP
+SPR_PVBC
+SPR_PVBG
+SPR_PTHK
+S_TESTWALL
+S_PIGCURSOR
+S_PIGGRID
+S_PIGVEHICLEGRID
+S_PIGGRIDWALL1
+
+State S_PIGCURSOR
+SpriteName = PVBC
+SpriteFrame = A
+Duration = 8
+Next = S_PIGCURSOR
+
+State S_TESTWALL
+SpriteName = PVBP
+SpriteFrame = A
+
+Object MT_TESTWALL
+SpawnState = S_TESTWALL
+SpawnHealth = 1
+SeeState = S_NULL
+SeeSound = sfx_none
+ReactionTime = 32
+AttackSound = sfx_None
+PainState = S_NULL
+PainChance = 800*FRACUNIT
+PainSound = sfx_none
+MeleeState = S_NULL
+MissileState = S_NULL
+DeathState = S_NULL
+XDeathState = S_NULL
+DeathSound = sfx_none
+Speed = 2
+Radius = 24*FRACUNIT
+Height = 32*FRACUNIT
+DispOffset = 0
+Mass = 100
+Damage = 0
+ActiveSound = sfx_none
+Flags = MF_NOGRAVITY|MF_PAPERCOLLISION|MF_SOLID # no clue if solid will actually help anything?
+RaiseState = S_NULL
+
+State S_PIGGRID
+SpriteName = PTHK
+SpriteFrame = I|TR_TRANS20
+
+Object MT_PIGGRID
+SpawnState = S_PIGGRID
+SpawnHealth = 1
+SeeState = S_NULL
+SeeSound = sfx_none
+ReactionTime = 32
+AttackSound = sfx_None
+PainState = S_NULL
+PainChance = 800*FRACUNIT
+PainSound = sfx_none
+MeleeState = S_NULL
+MissileState = S_NULL
+DeathState = S_NULL
+XDeathState = S_NULL
+DeathSound = sfx_none
+Speed = 2
+Radius = 24*FRACUNIT
+Height = 32*FRACUNIT
+DispOffset = 0
+Mass = 100
+Damage = 0
+ActiveSound = sfx_none
+Flags = MF_NOCLIP|MF_NOCLIPTHING|MF_NOGRAVITY|MF_SCENERY
+RaiseState = S_NULL
+
+State S_PIGVEHICLEGRID
+SpriteName = PTHK
+SpriteFrame = I|TR_TRANS20
+
+Object MT_PIGVEHICLEGRID
+SpawnState = S_PIGVEHICLEGRID
+SpawnHealth = 1
+SeeState = S_NULL
+SeeSound = sfx_none
+ReactionTime = 32
+AttackSound = sfx_None
+PainState = S_NULL
+PainChance = 800*FRACUNIT
+PainSound = sfx_none
+MeleeState = S_NULL
+MissileState = S_NULL
+DeathState = S_NULL
+XDeathState = S_NULL
+DeathSound = sfx_none
+Speed = 2
+Radius = 24*FRACUNIT
+Height = 32*FRACUNIT
+DispOffset = 0
+Mass = 100
+Damage = 0
+ActiveSound = sfx_none
+Flags = MF_NOCLIP|MF_NOCLIPTHING|MF_NOGRAVITY|MF_SCENERY|MF2_DONTDRAW
+RaiseState = S_NULL
+
+State S_PIGGRIDWALL1
+SpriteName = PVBG
+SpriteFrame = A|TR_TRANS50
+
+Object MT_PIGGRIDWALL
+SpawnState = S_PIGGRIDWALL1
+SpawnHealth = 1
+SeeState = S_NULL
+SeeSound = sfx_none
+ReactionTime = 32
+AttackSound = sfx_None
+PainState = S_NULL
+PainChance = 800*FRACUNIT
+PainSound = sfx_none
+MeleeState = S_NULL
+MissileState = S_NULL
+DeathState = S_NULL
+XDeathState = S_NULL
+DeathSound = sfx_none
+Speed = 2
+Radius = 24*FRACUNIT
+Height = 32*FRACUNIT
+DispOffset = 0
+Mass = 100
+Damage = 0
+ActiveSound = sfx_none
+Flags = MF_NOCLIP|MF_NOCLIPTHING|MF_NOGRAVITY|MF_SCENERY
+RaiseState = S_NULL

@@ -1,0 +1,17 @@
+Character
+SkinName = pig
+PicName = CHRPIG
+DisplayName = 
+NameTag = NAMPIG
+TagTextColor = SKINCOLOR_GREEN
+TagOutlineColor = SKINCOLOR_BROWN
+OppositeColor = SKINCOLOR_BLUE
+PlayerText = oink oink suckers
+
+^6Ability:^0 oink
+
+
+^6Ability:^0 oink
+
+
+
