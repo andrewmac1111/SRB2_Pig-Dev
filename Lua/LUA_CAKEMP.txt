@@ -30,22 +30,23 @@ addHook("MapChange", function(mapnum)
 end)
 
 addHook("PlayerThink", function(player)
-	if gametype == GT_CAKERACE 
-	and (endround or (not timeleft)) 
-	and not (player.pflags & PF_FINISHED) then
-		S_StartSoundAtVolume(nil, sfx_kc5c, 96, player)
-		P_DoPlayerFinish(player)
-	end
-	
-	player.pigmpcakes = $ or 0
-	
-	if player.mo.skin != "pig" then
-		R_SetPlayerSkin(player, "pig")
-	end
-	
-	if player.pigmpcakes == 5 and timeleft and not endround then
-		endround = true
-		winner = player
+	if gametype == GT_CAKERACE
+		if (endround or (not timeleft)) 
+		and not (player.pflags & PF_FINISHED) then
+			S_StartSoundAtVolume(nil, sfx_kc5c, 96, player)
+			P_DoPlayerFinish(player)
+		end
+		
+		player.pigmpcakes = $ or 0
+		
+		if player.mo.skin != "pig" then
+			R_SetPlayerSkin(player, "pig")
+		end
+		
+		if player.pigmpcakes == 5 and timeleft and not endround then
+			endround = true
+			winner = player
+		end
 	end
 end)
 
