@@ -474,6 +474,9 @@ addHook("ThinkFrame", function(player)
 				player.youarepig = 1 // hud fix for swapping skins
 			end
 			
+			player.pigconnectedpartsearchtimer = $ or 0
+			player.pigconnectedpartsearchtimer = max($-1, 0)
+			
 			player.pigcarangle = $ or 0
 			player.pigvoicetimer = $ or 0
 			if player.pigvoicetimer then
@@ -640,6 +643,10 @@ addHook("ThinkFrame", function(player)
 			end
 			
 			if pigmaploadflag then
+				player.pigconnectedparts = {}
+				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchflag = 1
+				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
 				player.pigcarmode = 0
 				player.pigbuild = 0
@@ -673,6 +680,10 @@ addHook("ThinkFrame", function(player)
 			end
 			
 			if pigmapchangeflag then
+				player.pigconnectedparts = {}
+				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchflag = 1
+				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
 				player.pigcarmode = 0
 				player.pigresetposflag = 1
@@ -711,6 +722,10 @@ addHook("ThinkFrame", function(player)
 			end
 			
 			if player.playerstate == PST_DEAD then // purely exists for multiplayer reasons (IMAGINE USING PIG IN MULTIPLAYER)
+				player.pigconnectedparts = {}
+				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchflag = 1
+				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
 				player.pigcarmode = 0
 				player.pigbuild = 0
@@ -740,6 +755,10 @@ addHook("ThinkFrame", function(player)
 			end
 			
 			if player.playerstate == PST_REBORN then //dont error on me you sassy program
+				player.pigconnectedparts = {}
+				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchflag = 1
+				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
 				player.pigcarmode = 0
 				player.pigbuild = 0
@@ -1035,6 +1054,19 @@ addHook("ThinkFrame", function(player)
 			end
 			
 			if player.pigdestroyallparts then
+				player.pigconnectedparts = {}
+				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchflag = 1
+				player.pigwarningdotclear = 1
+				if player.pigplacedparts then
+					if player.pigseatflag then
+						for i = 1, #player.pigplacedparts
+							if player.pigplacedparts[i].parttype == 4 then
+								player.pigplacedparts[i].checkneighbors = 1
+							end
+						end
+					end
+				end
 				player.pigseatflag = 0
 				player.pigvehiclerudderflag = 0
 				player.pigpowerwheelflag = 0
@@ -1355,6 +1387,146 @@ addHook("ThinkFrame", function(player)
 						//table.insert(player.pigplacedparts, player.pigpartdummy)
 					end
 					
+					if player.pigwarningdotclear then
+						if player.pigwarningdots then
+							for i = 1, #player.pigwarningdots
+								if player.pigwarningdots[i] and player.pigwarningdots[i].valid then
+									P_RemoveMobj(player.pigwarningdots[i])
+								end
+							end
+							player.pigwarningdots = nil
+						end
+						player.pigwarningdotclear = 0
+					end
+					
+					if player.pigconnectedpartsearchflag and player.pigseatflag and not player.pigconnectedpartsearchtimer then 
+					// this function needs work
+					// specifically warning dots can be duped on top of eachother for whatever reason
+						player.pigconnectionwarningflag = 0
+						local disconnectedparts
+						disconnectedparts = {}
+						
+						if player.pigwarningdots then
+							for i = 1, #player.pigwarningdots
+								if player.pigwarningdots[i] and player.pigwarningdots[i].valid then
+									P_RemoveMobj(player.pigwarningdots[i])
+								end
+							end
+							player.pigwarningdots = nil
+						end
+						
+						disconnectedparts = {}
+				
+						if #player.pigplacedparts > 1 then
+							for i = 1, #player.pigplacedparts
+								if player.pigconnectedparts then
+									local partfound = false
+									for j = 1, #player.pigconnectedparts
+										if player.pigplacedparts[i] == player.pigconnectedparts[j] then
+											partfound = true
+										else
+											if player.pigplacedparts[i].parttype != 4 then
+												table.insert(disconnectedparts, player.pigplacedparts[i])
+											end
+										end
+									end
+									if partfound == false then
+										player.pigconnectionwarningflag = 1
+									end
+								end
+							end
+							
+							if player.pigconnectionwarningflag then
+								if disconnectedparts then
+									for i = 1, #disconnectedparts
+										for j = 1, #player.pigconnectedparts
+											if disconnectedparts[i] == player.pigconnectedparts[j] then
+												table.remove(disconnectedparts, i)
+											end
+											if disconnectedparts[i] then
+												if disconnectedparts[i].parttype == 4 then
+													table.remove(disconnectedparts, i)
+												end
+											end
+										end
+									end
+									
+									for i = 1, #disconnectedparts
+										local dupecount = 0
+										for j = 1, #disconnectedparts
+											if disconnectedparts[j] == disconnectedparts[i] then
+												dupecount = $ + 1
+											end
+										end
+										if dupecount > 1 then
+											table.remove(disconnectedparts, i)
+											dupecount = 0
+										end
+									end
+									if not player.pigwarningdots then
+										player.pigwarningdots = {}
+										for i = 1, #disconnectedparts
+											/*
+											if player.pigwarningdots then
+												local foundexistingdot = false
+												for j = 1, #player.pigwarningdots
+													for k = 1, #disconnectedparts
+														if player.pigwarningdots[j].part == disconnectedparts[k] then
+															foundexistingdot = true
+														end
+													end
+												end
+												
+												if foundexistingdot == false then
+													local warningdot = P_SpawnMobj(disconnectedparts[i].x, disconnectedparts[i].y, disconnectedparts[i].z, MT_THOK)
+													warningdot.flags = $|MF_NOTHINK
+													warningdot.color = SKINCOLOR_RED
+													warningdot.fuse = FRACUNIT*FRACUNIT
+													warningdot.scale = $*2
+													warningdot.frame = A|TR_TRANS30
+													warningdot.part = disconnectedparts[i]
+												end
+											else
+											*/
+											local variableforsomething = false
+											
+											for j = 1, #player.pigconnectedparts
+												if disconnectedparts[i] == player.pigconnectedparts[j] then
+													variableforsomething = true
+												end
+											end
+											if player.pigwarningdots then
+												for j = 1, #player.pigwarningdots
+													if disconnectedparts[i] == player.pigwarningdots[j].index then
+														variableforsomething = true
+													end
+												end
+											end
+											if variableforsomething == false then
+												if disconnectedparts[i].parttype != 4 then
+													local warningdot = P_SpawnMobj(disconnectedparts[i].x, disconnectedparts[i].y, disconnectedparts[i].z - (18*FRACUNIT), MT_THOK)
+													warningdot.flags = $|MF_SCENERY
+													warningdot.color = skincolors[player.mo.color].invcolor + 9 // green -> orange. no clue how this affects other colors :trol:
+													warningdot.fuse = FRACUNIT*FRACUNIT
+													warningdot.tics = FRACUNIT*FRACUNIT
+													warningdot.scale = ($*2) - ($/2)
+													warningdot.frame = A|TR_TRANS40|FF_SEMIBRIGHT
+													warningdot.dotflag = true
+													warningdot.playerparent = player
+													warningdot.index = disconnectedparts[i]
+													//end
+
+													table.insert(player.pigwarningdots, warningdot)
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+						player.pigconnectedpartsearchflag = 0
+					end
+					
 					if player.pigcameraflag then
 						if player.camerascale < (FRACUNIT*2) then
 							player.camerascale = $ + (FRACUNIT/10)
@@ -1382,8 +1554,8 @@ addHook("ThinkFrame", function(player)
 					player.mo.flags = $|MF_NOGRAVITY
 					player.mo.state = S_PIGCURSOR
 					
-					player.pigloosepartflag = $ or 0
-					print(player.pigloosepartflag)
+					//player.pigloosepartflag = $ or 0
+					//print(player.pigloosepartflag)
 					
 					if not (player.pigmusicflag) then
 						P_PlayJingleMusic(player, "PIGBLD", nil, true, JT_OTHER) 
@@ -1561,6 +1733,14 @@ addHook("ThinkFrame", function(player)
 									end
 									*/
 									player.pigcarmode = 0
+									if player.pigwarningdots then
+										for i = 1, #player.pigwarningdots
+											if player.pigwarningdots[i] and player.pigwarningdots[i].valid then
+												P_RemoveMobj(player.pigwarningdots[i])
+											end
+										end
+										player.pigwarningdots = nil
+									end
 									COM_BufInsertText(player, "cam_still off")
 									S_StartSound(player.mo, sfx_pigv10, player)
 									S_StartSound(player.mo, sfx_pigve9, player)
@@ -1579,6 +1759,14 @@ addHook("ThinkFrame", function(player)
 										end
 										*/
 										player.pigcarmode = 1
+										if player.pigwarningdots then
+											for i = 1, #player.pigwarningdots
+												if player.pigwarningdots[i] and player.pigwarningdots[i].valid then
+													P_RemoveMobj(player.pigwarningdots[i])
+												end
+											end
+											player.pigwarningdots = nil
+										end
 										COM_BufInsertText(player, "cam_still off")
 										S_StartSound(player.mo, sfx_pigve9, player)
 									else
@@ -1697,6 +1885,18 @@ addHook("ThinkFrame", function(player)
 								player.pigplacedparts = {}
 								table.insert(player.pigplacedparts, player.pigpart)
 								player.pigpartflag = 1
+								
+								player.pigconnectedparts = {}
+								player.pigconnectedpartsearchtimer = 10
+								player.pigconnectedpartsearchflag = 1
+								player.pigwarningdotclear = 1
+								if player.pigseatflag then
+									for i = 1, #player.pigplacedparts
+										if player.pigplacedparts[i].parttype == 4 then
+											player.pigplacedparts[i].checkneighbors = 1
+										end
+									end
+								end
 							else
 								player.pigblockinspot = 0
 								for i = 1, #player.pigplacedparts
@@ -1829,15 +2029,29 @@ addHook("ThinkFrame", function(player)
 										player.pigpart.zcoord2 = 21
 									end
 									
+									/*
 									if #player.pigplacedparts then
 										player.pigloosepartflag = 0
 										for i = 1, #player.pigplacedparts
 											player.pigplacedparts[i].checkneighbors = 1
 										end
 									end
+									*/
 									
 									table.insert(player.pigplacedparts, player.pigpart)
 									player.pigblockinspot = 0 
+									
+									player.pigconnectedparts = {}
+									player.pigconnectedpartsearchtimer = 10
+									player.pigconnectedpartsearchflag = 1
+									player.pigwarningdotclear = 1
+									if player.pigseatflag then
+										for i = 1, #player.pigplacedparts
+											if player.pigplacedparts[i].parttype == 4 then
+												player.pigplacedparts[i].checkneighbors = 1
+											end
+										end
+									end
 								end
 								player.pigpartflag = 1
 							end
@@ -1864,6 +2078,7 @@ addHook("ThinkFrame", function(player)
 									and (player.pigplacedparts[i].ycoord2 == player.piggridcursory) 
 									and (player.pigplacedparts[i].zcoord2 == player.piggridcursorz) then
 										S_StartSound(player.mo, sfx_pigve5, player)
+										/*
 										if #player.pigplacedparts > 1 then
 											player.pigloosepartflag = 0
 											for i = 1, #player.pigplacedparts
@@ -1874,6 +2089,7 @@ addHook("ThinkFrame", function(player)
 										else
 											player.pigloosepartflag = 0
 										end
+										*/
 										
 										player.pigvehicleweight = $ - pigpartweights[player.pigplacedparts[i].parttype + 1]
 										player.pigvehiclebuoyancy = $ - pigpartbuoyancies[player.pigplacedparts[i].parttype + 1]
@@ -1888,7 +2104,7 @@ addHook("ThinkFrame", function(player)
 											player.pigvehiclepower = $ - pigenginestrengths[player.pigplacedparts[i].parttype + 1] 
 										end
 										
-										print(player.pigvehiclepower)
+										//print(player.pigvehiclepower)
 										
 										if player.pigplacedparts[i].parttype == 4 then // seat
 											player.pigseatflag = 0
@@ -1942,6 +2158,17 @@ addHook("ThinkFrame", function(player)
 										player.pigplacedparts[i].kill = 1
 										table.remove(player.pigplacedparts, i)
 										player.blockinspot2 = 1
+										player.pigconnectedparts = {}
+										player.pigconnectedpartsearchtimer = 10
+										player.pigconnectedpartsearchflag = 1
+										player.pigwarningdotclear = 1
+										if player.pigseatflag then
+											for i = 1, #player.pigplacedparts
+												if player.pigplacedparts[i].parttype == 4 then
+													player.pigplacedparts[i].checkneighbors = 1
+												end
+											end
+										end
 									else
 										player.blockinspot2 = 0
 									end
@@ -2240,7 +2467,9 @@ hud.add(function(v, player, camera)
 							//v.drawScaled(FRACUNIT*175, FRACUNIT, FRACUNIT/2, warning)
 							v.drawScaled(FRACUNIT, FRACUNIT, FRACUNIT, warning1)
 						end
-						
+						if player.pigconnectionwarningflag then
+							v.drawScaled(FRACUNIT, FRACUNIT, FRACUNIT, warning2)
+						end
 					end
 				end
 				//end
@@ -2510,6 +2739,23 @@ addHook("MobjThinker", function(mobj)
 end, MT_GHOST)
 
 addHook("MobjThinker", function(mobj)
+	if mobj and mobj.valid 
+	and mobj.playerparent and mobj.playerparent.valid then
+		if mobj.dotflag then
+			if mobj.playerparent == displayplayer
+				if abs(leveltime/19) % 2 then
+					mobj.flags = $&~MF2_DONTDRAW
+				else
+					mobj.flags = $|MF2_DONTDRAW
+				end
+			else
+				mobj.flags = $|MF2_DONTDRAW
+			end
+		end
+	end
+end, MT_THOK)
+
+addHook("MobjThinker", function(mobj)
 	if mobj.valid 
 	and mobj.parent and mobj.parent.valid then
 		if not mobj.angleadd then
@@ -2539,67 +2785,160 @@ addHook("MobjThinker", function(mobj)
 							mobj.zcoord2 = 21
 						end
 						
-						if mobj.checkneighbors and not mobj.kill then // this needs to be completely redone
-							local sides1 = {
-								mobj.zcoord + 1, // top
-								mobj.xcoord - 1, // left
-								mobj.xcoord + 1, // right
-								mobj.ycoord + 1, // front
-								mobj.ycoord - 1, // back
-								mobj.zcoord - 1 // bottom
-							}
+						if mobj.checkneighbors then
+							for i = 1, #mobj.parent.player.pigplacedparts // MASSIVE
+								table.insert(mobj.parent.player.pigconnectedparts, mobj)
+								
+								if (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord - 1 // check left
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord - 1
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 - 1
+								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 - 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 10
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 10
+									end
+								end
+								
+								if (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord + 1 // check right
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord + 1
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 + 1
+								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 + 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 10
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 10
+									end
+								end
+								
+								if (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord + 1 // check forwards
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord + 1
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 + 1
+								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2 + 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 10
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 10
+									end
+								end
+								
+								if (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord - 1 // check backwards
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord - 1
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 - 1
+								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2 - 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 10
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 10
+									end
+								end
+								
+								if (mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord + 1 // check up
+								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord + 1
+								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 + 1
+								or mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord2 + 1)
+								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 10
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 10
+									end
+								end
 							
-							local sides2 = {
-								mobj.zcoord2 + 1, // top
-								mobj.xcoord2 - 1, // left
-								mobj.xcoord2 + 1, // right
-								mobj.ycoord2 + 1, // front
-								mobj.ycoord2 - 1, // back
-								mobj.zcoord2 - 1 // bottom
-							}
-							
-							local sides3 = {
-								false, // top
-								false, // left
-								false, // right
-								false, // front
-								false, // back
-								false // bottom
-							}
-							
-							local sides4 = {}
-							
-							for i = 1, #mobj.parent.player.pigplacedparts
-								sides4 = {
-									mobj.parent.player.pigplacedparts[i].zcoord, // top
-									mobj.parent.player.pigplacedparts[i].xcoord, // left
-									mobj.parent.player.pigplacedparts[i].xcoord, // right
-									mobj.parent.player.pigplacedparts[i].ycoord, // front
-									mobj.parent.player.pigplacedparts[i].ycoord, // back
-									mobj.parent.player.pigplacedparts[i].zcoord // bottom
-								}
-								for s = 1, #sides1
-									if sides4[s] == sides1[s] 
-									or sides4[s] == sides2[s] 
-									or sides4[s] == sides1[s] 
-									or sides4[s] == sides2[s]  then
-										sides3[s] = true
+								if (mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord - 1 // check down
+								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord - 1
+								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 - 1
+								or mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord2 - 1)
+								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 10
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 10
 									end
 								end
 							end
-							
-							local foundconnection
-															
-							for i = 1, #sides3
-								if sides3[i] == true then
-									foundconnection = true
-								end
-							end
-								
-							if foundconnection == nil then
-								mobj.parent.player.pigloosepartflag = 1
-							end
-							
 							mobj.checkneighbors = 0
 						end
 									
@@ -2726,7 +3065,7 @@ addHook("MobjThinker", function(mobj)
 							mobj.pig.playerparent = mobj.parent.player
 							mobj.pig.seatflag = 1
 						elseif mobj.parttype == 6 then
-							print("engine spawned")
+							//print("engine spawned")
 							mobj.engine = P_SpawnMobj(mobj.x, mobj.y, mobj.z, MT_TESTWALL)
 							mobj.engine.parent = mobj
 							mobj.engine.playerparent = mobj.parent.player
@@ -2740,7 +3079,7 @@ addHook("MobjThinker", function(mobj)
 							mobj.engine.engine = 1
 							//mobj.stupidfreakingengine = mobj.engine
 						elseif mobj.parttype == 10 then
-							print("engine spawned")
+							//print("engine spawned")
 							mobj.engine = P_SpawnMobj(mobj.x, mobj.y, mobj.z, MT_TESTWALL)
 							mobj.engine.parent = mobj
 							mobj.engine.playerparent = mobj.parent.player
@@ -2753,7 +3092,7 @@ addHook("MobjThinker", function(mobj)
 							mobj.engine.flags = $|MF_NOCLIP
 							mobj.engine.engine = 2
 						elseif mobj.parttype == 13 then
-							print("engine spawned")
+							//print("engine spawned")
 							mobj.engine = P_SpawnMobj(mobj.x, mobj.y, mobj.z, MT_TESTWALL)
 							mobj.engine.parent = mobj
 							mobj.engine.playerparent = mobj.parent.player

@@ -63,6 +63,6 @@ addHook("ThinkFrame", function()
 				end
 			end
 		else
-			
+		end
 	end
 end)
