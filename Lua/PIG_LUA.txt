@@ -179,7 +179,7 @@ local pigmaploadflag = 0
 local pigmapchangeflag = 0
 
 // first time im ever doing these because im sick of having to change multiple things at once when adding a part
-local NUM_PARTS = 14
+local NUM_PARTS = 15
 
 local pigpartweights = {
 	2, // wood
@@ -196,7 +196,8 @@ local pigpartweights = {
 	2, // powered wheel
 	2, // wing
 	5, // v8
-	1 // rudder 
+	1, // rudder 
+	4 // drill
 }
 
 local pigpartbuoyancies = {
@@ -214,7 +215,8 @@ local pigpartbuoyancies = {
 	-1, // powered wheel
 	1, // wing
 	-1, // v8
-	1 // rudder
+	1, // rudder
+	-1 // drill
 }
 
 // easier to just include all parts as being technically an engine rather than only engines
@@ -234,7 +236,8 @@ local pigenginestrengths = {
 	0, // powered wheel
 	0, // wing
 	24, // v8 (sorry for making v8 break the pattern of each engine being double the last. 21 felt too slow, 28 felt too fast)
-	0 // rudder
+	0, // rudder
+	0 // drill
 }
 
 // builder stuff
@@ -253,7 +256,8 @@ local pigpartnames = {
 	"POWERED WHEEL",
 	"WING",
 	"V8 ENGINE",
-	"RUDDER"
+	"RUDDER",
+	"DRILL"
 }
 
 addHook("MapLoad", function()
@@ -269,6 +273,30 @@ addHook("NetVars", function(network) // no clue if this actually helps anything,
 	pigmaploadflag = network($)
 	pigmapchangeflag = network($)
 end)
+
+local DrillWallCheck = function(mobj, sectorthing, destroy)
+	for fof in sectorthing.ffloors()
+		if fof.valid and (fof.flags & FF_BUSTUP) and (fof.flags & FF_EXISTS)
+			local foffloor = fof.topheight
+			local fofceiling = fof.bottomheight
+			if fof.b_slope and fof.b_slope.valid
+				fofceiling = P_GetZAt(fof.b_slope, mobj.x, mobj.y)
+			end
+			if fof.t_slope and fof.t_slope.valid
+				foffloor = P_GetZAt(fof.t_slope, mobj.x, mobj.y)
+			end
+			if foffloor >= mobj.z and fofceiling <= mobj.z+mobj.height
+				if destroy then // simply for checking if a wall if viable
+					EV_CrumbleChain(nil, fof)
+					if fof.master.flags & ML_EFFECT5
+						P_LinedefExecute(P_AproxDistance(fof.master.dx, fof.master.dy)>>FRACBITS, mobj, sectorthing)
+					end
+				end
+				return true
+			end
+		end	
+	end
+end
 
 local PlayImpactSound = function(mobj, playerflag)
 	local gamesounduse = P_RandomRange(0, 1) // BP OR N&B
@@ -497,6 +525,9 @@ addHook("ThinkFrame", function(player)
 			
 			player.pigwingcount = $ or 0 // please dont launch me into the air
 			
+			player.pigwalldrilltimer = $ or 0
+			player.pigwalldrilltimer = min($+1, 30)
+			
 			if player.pigcarmode then
 				if player.oldmomz != nil then
 					if (player.mo.eflags & MFE_JUSTHITFLOOR) then
@@ -644,7 +675,7 @@ addHook("ThinkFrame", function(player)
 			
 			if pigmaploadflag then
 				player.pigconnectedparts = {}
-				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchtimer = 6
 				player.pigconnectedpartsearchflag = 1
 				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
@@ -681,7 +712,7 @@ addHook("ThinkFrame", function(player)
 			
 			if pigmapchangeflag then
 				player.pigconnectedparts = {}
-				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchtimer = 6
 				player.pigconnectedpartsearchflag = 1
 				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
@@ -723,7 +754,7 @@ addHook("ThinkFrame", function(player)
 			
 			if player.playerstate == PST_DEAD then // purely exists for multiplayer reasons (IMAGINE USING PIG IN MULTIPLAYER)
 				player.pigconnectedparts = {}
-				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchtimer = 6
 				player.pigconnectedpartsearchflag = 1
 				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
@@ -756,7 +787,7 @@ addHook("ThinkFrame", function(player)
 			
 			if player.playerstate == PST_REBORN then //dont error on me you sassy program
 				player.pigconnectedparts = {}
-				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchtimer = 6
 				player.pigconnectedpartsearchflag = 1
 				player.pigwarningdotclear = 1
 				player.mo.flags = $&~MF2_DONTDRAW
@@ -1055,7 +1086,7 @@ addHook("ThinkFrame", function(player)
 			
 			if player.pigdestroyallparts then
 				player.pigconnectedparts = {}
-				player.pigconnectedpartsearchtimer = 10
+				player.pigconnectedpartsearchtimer = 6
 				player.pigconnectedpartsearchflag = 1
 				player.pigwarningdotclear = 1
 				if player.pigplacedparts then
@@ -1483,7 +1514,7 @@ addHook("ThinkFrame", function(player)
 													warningdot.color = SKINCOLOR_RED
 													warningdot.fuse = FRACUNIT*FRACUNIT
 													warningdot.scale = $*2
-													warningdot.frame = A|TR_TRANS30
+													warningdot.frame = A|FF_TRANS30
 													warningdot.part = disconnectedparts[i]
 												end
 											else
@@ -1494,6 +1525,7 @@ addHook("ThinkFrame", function(player)
 												if disconnectedparts[i] == player.pigconnectedparts[j] then
 													variableforsomething = true
 												end
+												player.pigconnectedparts[j].disconnected = 0
 											end
 											if player.pigwarningdots then
 												for j = 1, #player.pigwarningdots
@@ -1502,6 +1534,7 @@ addHook("ThinkFrame", function(player)
 													end
 												end
 											end
+											
 											if variableforsomething == false then
 												if disconnectedparts[i].parttype != 4 then
 													local warningdot = P_SpawnMobj(disconnectedparts[i].x, disconnectedparts[i].y, disconnectedparts[i].z - (18*FRACUNIT), MT_THOK)
@@ -1510,10 +1543,11 @@ addHook("ThinkFrame", function(player)
 													warningdot.fuse = FRACUNIT*FRACUNIT
 													warningdot.tics = FRACUNIT*FRACUNIT
 													warningdot.scale = ($*2) - ($/2)
-													warningdot.frame = A|TR_TRANS40|FF_SEMIBRIGHT
+													warningdot.frame = A|FF_TRANS40|FF_SEMIBRIGHT
 													warningdot.dotflag = true
 													warningdot.playerparent = player
 													warningdot.index = disconnectedparts[i]
+													disconnectedparts[i].disconnected = 1
 													//end
 
 													table.insert(player.pigwarningdots, warningdot)
@@ -1887,7 +1921,7 @@ addHook("ThinkFrame", function(player)
 								player.pigpartflag = 1
 								
 								player.pigconnectedparts = {}
-								player.pigconnectedpartsearchtimer = 10
+								player.pigconnectedpartsearchtimer = 6
 								player.pigconnectedpartsearchflag = 1
 								player.pigwarningdotclear = 1
 								if player.pigseatflag then
@@ -1895,6 +1929,7 @@ addHook("ThinkFrame", function(player)
 										if player.pigplacedparts[i].parttype == 4 then
 											player.pigplacedparts[i].checkneighbors = 1
 										end
+										player.pigplacedparts[i].disconnected = 0
 									end
 								end
 							else
@@ -2042,7 +2077,7 @@ addHook("ThinkFrame", function(player)
 									player.pigblockinspot = 0 
 									
 									player.pigconnectedparts = {}
-									player.pigconnectedpartsearchtimer = 10
+									player.pigconnectedpartsearchtimer = 6
 									player.pigconnectedpartsearchflag = 1
 									player.pigwarningdotclear = 1
 									if player.pigseatflag then
@@ -2050,6 +2085,7 @@ addHook("ThinkFrame", function(player)
 											if player.pigplacedparts[i].parttype == 4 then
 												player.pigplacedparts[i].checkneighbors = 1
 											end
+											player.pigplacedparts[i].disconnected = 0
 										end
 									end
 								end
@@ -2159,7 +2195,7 @@ addHook("ThinkFrame", function(player)
 										table.remove(player.pigplacedparts, i)
 										player.blockinspot2 = 1
 										player.pigconnectedparts = {}
-										player.pigconnectedpartsearchtimer = 10
+										player.pigconnectedpartsearchtimer = 6
 										player.pigconnectedpartsearchflag = 1
 										player.pigwarningdotclear = 1
 										if player.pigseatflag then
@@ -2167,6 +2203,7 @@ addHook("ThinkFrame", function(player)
 												if player.pigplacedparts[i].parttype == 4 then
 													player.pigplacedparts[i].checkneighbors = 1
 												end
+												player.pigplacedparts[i].disconnected = 0
 											end
 										end
 									else
@@ -2701,7 +2738,7 @@ addHook("MobjThinker", function(mobj)
 			mobj.flags2 = $&~MF2_DONTDRAW
 		end
 		if mobj.floor then
-			mobj.frame = B|TR_TRANS50
+			mobj.frame = B|FF_TRANS50
 		end
 		if not mobj.parent.pigbuild then
 			P_RemoveMobj(mobj)
@@ -2725,7 +2762,7 @@ addHook("MobjThinker", function(mobj)
 			end
 			mobj.state = S_PLAY_STND
 			if mobj.playerparent.pigbuild then
-				mobj.frame = A|TR_TRANS40
+				mobj.frame = A|FF_TRANS40
 				mobj.color = SKINCOLOR_SEAFOAM
 			else
 				mobj.frame = A
@@ -2751,6 +2788,10 @@ addHook("MobjThinker", function(mobj)
 			else
 				mobj.flags = $|MF2_DONTDRAW
 			end
+			
+			if not mobj.playerparent.pigconnectedpartsearchflag then
+				mobj.index.disconnected = 1
+			end
 		end
 	end
 end, MT_THOK)
@@ -2775,6 +2816,12 @@ addHook("MobjThinker", function(mobj)
 							mobj.flags2 = $&~MF2_DONTDRAW
 						end
 						
+						if mobj.disconnected then
+							mobj.frame = $|FF_TRANS50
+						else
+							mobj.frame = $&~FF_TRANS50
+						end
+						
 						if mobj.xcoord2 == nil then
 							mobj.xcoord2 = 69
 						end
@@ -2789,10 +2836,7 @@ addHook("MobjThinker", function(mobj)
 							for i = 1, #mobj.parent.player.pigplacedparts // MASSIVE
 								table.insert(mobj.parent.player.pigconnectedparts, mobj)
 								
-								if (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord - 1 // check left
-								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord - 1
-								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 - 1
-								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 - 1)
+								if mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord - 1 // check left
 								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
 								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
 									if mobj.parent.player.pigconnectedparts then
@@ -2805,19 +2849,42 @@ addHook("MobjThinker", function(mobj)
 										if not foundpart then
 											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
 											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-											mobj.parent.player.pigconnectedpartsearchtimer = 10
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
 										end
 									else
 										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
 										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-										mobj.parent.player.pigconnectedpartsearchtimer = 10
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
 									end
 								end
 								
-								if (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord + 1 // check right
-								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord + 1
-								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 + 1
-								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 + 1)
+								if (mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord - 1 // check left2
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 - 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 // make sure its on the same plane
+								and (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord 
+								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2 
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord) then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+								
+								if mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord + 1 // check right
 								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
 								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
 									if mobj.parent.player.pigconnectedparts then
@@ -2830,19 +2897,42 @@ addHook("MobjThinker", function(mobj)
 										if not foundpart then
 											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
 											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-											mobj.parent.player.pigconnectedpartsearchtimer = 10
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
 										end
 									else
 										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
 										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-										mobj.parent.player.pigconnectedpartsearchtimer = 10
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
 									end
 								end
 								
-								if (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord + 1 // check forwards
-								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord + 1
-								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 + 1
-								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2 + 1)
+								if (mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord + 1 // check right2
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 + 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 // make sure its on the same plane
+								and (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord 
+								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2 
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord) then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+								
+								if mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord + 1 // check forwards
 								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
 								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord then
 									if mobj.parent.player.pigconnectedparts then
@@ -2855,69 +2945,90 @@ addHook("MobjThinker", function(mobj)
 										if not foundpart then
 											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
 											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-											mobj.parent.player.pigconnectedpartsearchtimer = 10
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
 										end
 									else
 										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
 										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-										mobj.parent.player.pigconnectedpartsearchtimer = 10
-									end
-								end
-								
-								if (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord - 1 // check backwards
-								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord - 1
-								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 - 1
-								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2 - 1)
-								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
-								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord then
-									if mobj.parent.player.pigconnectedparts then
-										local foundpart
-										for j = 1, #mobj.parent.player.pigconnectedparts
-											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
-												foundpart = true
-											end
-										end
-										if not foundpart then
-											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
-											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-											mobj.parent.player.pigconnectedpartsearchtimer = 10
-										end
-									else
-										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
-										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-										mobj.parent.player.pigconnectedpartsearchtimer = 10
-									end
-								end
-								
-								if (mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord + 1 // check up
-								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord + 1
-								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 + 1
-								or mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord2 + 1)
-								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord // make sure its on the same plane
-								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
-									if mobj.parent.player.pigconnectedparts then
-										local foundpart
-										for j = 1, #mobj.parent.player.pigconnectedparts
-											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
-												foundpart = true
-											end
-										end
-										if not foundpart then
-											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
-											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-											mobj.parent.player.pigconnectedpartsearchtimer = 10
-										end
-									else
-										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
-										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-										mobj.parent.player.pigconnectedpartsearchtimer = 10
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
 									end
 								end
 							
-								if (mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord - 1 // check down
-								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord - 1
-								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 - 1
-								or mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord2 - 1)
+								if (mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord + 1 // check forwards2
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 + 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 // make sure its on the same plane
+								and (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord 
+								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord) then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+								
+								if mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord - 1 // check backwards
+								and mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+								
+								if (mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord - 1 // check backwards2
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 - 1)
+								and mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 // make sure its on the same plane
+								and (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord 
+								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord) then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+								
+								if mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord + 1 // check up
 								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord // make sure its on the same plane
 								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
 									if mobj.parent.player.pigconnectedparts then
@@ -2930,12 +3041,92 @@ addHook("MobjThinker", function(mobj)
 										if not foundpart then
 											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
 											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-											mobj.parent.player.pigconnectedpartsearchtimer = 10
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
 										end
 									else
 										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
 										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
-										mobj.parent.player.pigconnectedpartsearchtimer = 10
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+								
+								if (mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord + 1 // check up2
+								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 + 1)
+								and (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord // make sure its on the same plane
+								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord)
+								and (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord 
+								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord) then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+							
+								if mobj.parent.player.pigplacedparts[i].zcoord == mobj.zcoord - 1 // check down
+								and mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord // make sure its on the same plane
+								and mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
+									end
+								end
+								
+								if (mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord - 1 // check down2
+								or mobj.parent.player.pigplacedparts[i].zcoord2 == mobj.zcoord2 - 1)
+								and (mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord // make sure its on the same plane
+								or mobj.parent.player.pigplacedparts[i].ycoord == mobj.ycoord2
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord2 
+								or mobj.parent.player.pigplacedparts[i].ycoord2 == mobj.ycoord)
+								and (mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord 
+								or mobj.parent.player.pigplacedparts[i].xcoord == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord2 
+								or mobj.parent.player.pigplacedparts[i].xcoord2 == mobj.xcoord) then
+									if mobj.parent.player.pigconnectedparts then
+										local foundpart
+										for j = 1, #mobj.parent.player.pigconnectedparts
+											if mobj.parent.player.pigconnectedparts[j] == mobj.parent.player.pigplacedparts[i] then // check if not already in the list
+												foundpart = true
+											end
+										end
+										if not foundpart then
+											mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+											table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+											mobj.parent.player.pigconnectedpartsearchtimer = 6
+										end
+									else
+										mobj.parent.player.pigplacedparts[i].checkneighbors = 1 // iterate through every part
+										table.insert(mobj.parent.player.pigconnectedparts, mobj.parent.player.pigplacedparts[i])
+										mobj.parent.player.pigconnectedpartsearchtimer = 6
 									end
 								end
 							end
@@ -2968,6 +3159,7 @@ addHook("MobjThinker", function(mobj)
 						
 						mobj.angle = mobj.parent.player.drawangle + mobj.angleadd
 						mobj.flags2 = $&~MF2_DONTDRAW
+						mobj.frame = $&~FF_TRANS50
 					end
 					
 					mobj.impacttimer = $ or 0
@@ -3178,12 +3370,12 @@ addHook("MobjThinker", function(mobj)
 							mobj.topframe.frame = Y
 							mobj.bottomframe.frame = Y
 							
-							mobj.leftwall.frame = 27|TR_TRANS40
-							mobj.rightwall.frame = 27|TR_TRANS40
-							mobj.frontwall.frame = Z|TR_TRANS40
-							mobj.backwall.frame = 26|TR_TRANS40
-							mobj.topwall.frame = X|TR_TRANS40
-							mobj.frame = X|TR_TRANS40
+							mobj.leftwall.frame = 27|FF_TRANS40
+							mobj.rightwall.frame = 27|FF_TRANS40
+							mobj.frontwall.frame = Z|FF_TRANS40
+							mobj.backwall.frame = 26|FF_TRANS40
+							mobj.topwall.frame = X|FF_TRANS40
+							mobj.frame = X|FF_TRANS40
 							
 							mobj.leftwall.distancescale = 0 // apparently right and left are flipped :gordonf:
 							mobj.frontwall.heightscale = 12
@@ -3245,6 +3437,22 @@ addHook("MobjThinker", function(mobj)
 							mobj.topwall.heightscale = 14
 							mobj.frame = 44
 							mobj.renderflags = $|RF_PAPERSPRITE
+						elseif mobj.parttype == 15 then
+							mobj.leftwall.frame = I
+							mobj.rightwall.frame = I
+							mobj.frontwall.frame = I
+							mobj.backwall.frame = 48
+							mobj.backwall.angleadd = ANGLE_270
+							// lets be honest. 
+							// will the backside of the drill ever collide with anything if it has to be connected by the backside?
+							// no
+							mobj.topwall.frame = I
+							mobj.frame = I
+							
+							mobj.leftwall.flags = $|MF_NOCLIPHEIGHT
+							mobj.rightwall.flags = $|MF_NOCLIPHEIGHT
+							mobj.frontwall.flags = $|MF_NOCLIPHEIGHT
+							mobj.backwall.flags = $|MF_NOCLIPHEIGHT
 						end
 						
 						mobj.angle = mobj.parent.player.piggridangle + mobj.angleadd
@@ -3271,7 +3479,9 @@ addHook("MobjThinker", function(mobj)
 						mobj.frontwall.childflag = 1
 						
 						mobj.backwall.flags = $|MF_NOCLIPTHING
-						mobj.backwall.renderflags = $|RF_PAPERSPRITE
+						if mobj.parttype != 15 then
+							mobj.backwall.renderflags = $|RF_PAPERSPRITE
+						end
 						mobj.backwall.direction = 3
 						mobj.backwall.parent = mobj
 						mobj.backwall.playerparent = mobj.parent.player
@@ -3287,6 +3497,10 @@ addHook("MobjThinker", function(mobj)
 						mobj.topwall.childflag = 1
 						
 						mobj.finishspawn = 1
+					end
+					
+					if S_SoundPlaying(mobj.frontwall, sfx_rumble) and mobj.parent.player.pigwalldrilltimer == 30 then
+						S_StopSoundByID(mobj.frontwall, sfx_rumble)
 					end
 					
 					if (mobj.parent.player.cmd.buttons & BT_JUMP) 
@@ -3370,8 +3584,15 @@ addHook("MobjThinker", function(mobj)
 						else
 							mobj.flags2 = $&~MF2_DONTDRAW
 						end
+						
+						if mobj.parent.disconnected then
+							mobj.frame = $|FF_TRANS50
+						else
+							mobj.frame = $&~FF_TRANS50
+						end
 					else
 						mobj.flags2 = $&~MF2_DONTDRAW
+						mobj.frame = $&~FF_TRANS50
 					end
 					
 					if mobj.playerparent.pigusingengine then
@@ -3382,7 +3603,7 @@ addHook("MobjThinker", function(mobj)
 									if (leveltime/6) % 2 then
 										if not mobj.dustflag then
 											mobj.dust = P_SpawnMobjFromMobj(mobj, 0, 0, 10*FRACUNIT, MT_TNTDUST)
-											mobj.dust.frame = A|(TR_TRANS10+(P_RandomRange(2,7)*FRACUNIT))
+											mobj.dust.frame = A|(FF_TRANS10+(P_RandomRange(2,7)*FRACUNIT))
 											mobj.dust.scale = FRACUNIT/P_RandomRange(2, 3)
 											mobj.dust.blendmode = AST_ADD
 											mobj.dustflag = 1
@@ -3394,7 +3615,7 @@ addHook("MobjThinker", function(mobj)
 									if (leveltime/2) % 2 then
 										if not mobj.dustflag then
 											mobj.dust = P_SpawnMobjFromMobj(mobj, 0, 0, 10*FRACUNIT, MT_TNTDUST)
-											mobj.dust.frame = A|(TR_TRANS10+(P_RandomRange(2,7)*FRACUNIT))
+											mobj.dust.frame = A|(FF_TRANS10+(P_RandomRange(2,7)*FRACUNIT))
 											mobj.dust.scale = FRACUNIT/P_RandomRange(2, 3)
 											mobj.dust.blendmode = AST_ADD
 											mobj.dustflag = 1
@@ -3582,8 +3803,15 @@ addHook("MobjThinker", function(mobj)
 					else
 						mobj.flags2 = $&~MF2_DONTDRAW
 					end
+					
+					if mobj.parent.disconnected then
+						mobj.frame = $|FF_TRANS50
+					else
+						mobj.frame = $&~FF_TRANS50
+					end
 				else
 					mobj.flags2 = $&~MF2_DONTDRAW
+					mobj.frame = $&~FF_TRANS50
 				end
 				if mobj.impacttimer then
 					mobj.impacttimer = max($-1, 0)
@@ -3682,15 +3910,34 @@ addHook("MobjThinker", function(mobj)
 						P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[2] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[2] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
 						if not mobj.parent.insideflag then // parts inside blocks dont have collision
 							if P_TryMove(mobj, mobj.x + mobj.parent.cosdirections[2] * 6, mobj.y + mobj.parent.sindirections[2] * 6, true) == false then
-								if mobj.playerparent.speed/FRACUNIT < 70 then //The "DONT LET PIG GO ZOOM IF STUCK JUST RIGHT" safeguard
-									mobj.oldmomx = mobj.playerparent.mo.momx
-									mobj.oldmomy = mobj.playerparent.mo.momy
-									P_InstaThrust(mobj.parent.parent, mobj.playerparent.drawangle + ANGLE_90 + mobj.angleadd, mobj.playerparent.speed)
-								end
-								if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
-									PlayImpactSound(mobj)
-									mobj.impacttimer = 3 
-									mobj.parent.impacttimer = 10
+								if mobj.parent.parttype != 15 then
+									if mobj.playerparent.speed/FRACUNIT < 70 then //The "DONT LET PIG GO ZOOM IF STUCK JUST RIGHT" safeguard
+										mobj.oldmomx = mobj.playerparent.mo.momx
+										mobj.oldmomy = mobj.playerparent.mo.momy
+										P_InstaThrust(mobj.parent.parent, mobj.playerparent.drawangle + ANGLE_90 + mobj.angleadd, mobj.playerparent.speed)
+									end
+									if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
+										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
+										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
+										PlayImpactSound(mobj)
+										mobj.impacttimer = 3 
+										mobj.parent.impacttimer = 10
+									end
+								else
+									if mobj.playerparent.pigusingengine then
+										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
+											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
+												S_StartSound(mobj.parent.frontwall, sfx_rumble)
+											end
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_dmpain) then
+												S_StartSound(mobj.parent.frontwall, sfx_dmpain)
+											end
+											if not mobj.playerparent.pigwalldrilltimer then
+												DrillWallCheck(mobj, mobj.subsector.sector, true)
+											end
+										end
+									end
 								end
 							else
 								P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[2] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[2] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
@@ -3701,17 +3948,34 @@ addHook("MobjThinker", function(mobj)
 						P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[3] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[3] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
 						if not mobj.parent.insideflag then
 							if P_TryMove(mobj, mobj.x + mobj.parent.cosdirections[3] * 6, mobj.y + mobj.parent.sindirections[3] * 6, true) == false then
-								if mobj.playerparent.speed/FRACUNIT < 70 then
-									mobj.oldmomx = mobj.playerparent.mo.momx
-									mobj.oldmomy = mobj.playerparent.mo.momy
-									P_InstaThrust(mobj.parent.parent, mobj.playerparent.drawangle - ANGLE_90 - mobj.angleadd, mobj.playerparent.speed)
-								end
-								if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
-									mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
-									mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
-									PlayImpactSound(mobj)
-									mobj.impacttimer = 3
-									mobj.parent.impacttimer = 10
+								if mobj.parent.parttype != 15 then
+									if mobj.playerparent.speed/FRACUNIT < 70 then
+										mobj.oldmomx = mobj.playerparent.mo.momx
+										mobj.oldmomy = mobj.playerparent.mo.momy
+										P_InstaThrust(mobj.parent.parent, mobj.playerparent.drawangle - ANGLE_90 - mobj.angleadd, mobj.playerparent.speed)
+									end
+									if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
+										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
+										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
+										PlayImpactSound(mobj)
+										mobj.impacttimer = 3
+										mobj.parent.impacttimer = 10
+									end
+								else
+									if mobj.playerparent.pigusingengine then
+										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
+											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
+												S_StartSound(mobj.parent.frontwall, sfx_rumble)
+											end
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_dmpain) then
+												S_StartSound(mobj.parent.frontwall, sfx_dmpain)
+											end
+											if not mobj.playerparent.pigwalldrilltimer then
+												DrillWallCheck(mobj, mobj.subsector.sector, true)
+											end
+										end
+									end
 								end
 							else
 								P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[3] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[3] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
@@ -3722,17 +3986,34 @@ addHook("MobjThinker", function(mobj)
 						P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[1] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[1] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
 						if not mobj.parent.insideflag then
 							if P_TryMove(mobj, mobj.x + mobj.parent.cosdirections[1] * 6, mobj.y + mobj.parent.sindirections[1] * 6, true) == false then
-								if mobj.playerparent.speed/FRACUNIT < 70 then
-									mobj.oldmomx = mobj.playerparent.mo.momx
-									mobj.oldmomy = mobj.playerparent.mo.momy
-									P_InstaThrust(mobj.parent.parent, mobj.angle + ANGLE_90, mobj.playerparent.speed)
-								end
-								if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
-									mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
-									mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
-									PlayImpactSound(mobj)
-									mobj.impacttimer = 3 
-									mobj.parent.impacttimer = 10
+								if mobj.parent.parttype != 15 then
+									if mobj.playerparent.speed/FRACUNIT < 70 then
+										mobj.oldmomx = mobj.playerparent.mo.momx
+										mobj.oldmomy = mobj.playerparent.mo.momy
+										P_InstaThrust(mobj.parent.parent, mobj.angle + ANGLE_90, mobj.playerparent.speed)
+									end
+									if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
+										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
+										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
+										PlayImpactSound(mobj)
+										mobj.impacttimer = 3 
+										mobj.parent.impacttimer = 10
+									end
+								else
+									if mobj.playerparent.pigusingengine then
+										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
+											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
+												S_StartSound(mobj.parent.frontwall, sfx_rumble)
+											end
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_dmpain) then
+												S_StartSound(mobj.parent.frontwall, sfx_dmpain)
+											end
+											if not mobj.playerparent.pigwalldrilltimer then
+												DrillWallCheck(mobj, mobj.subsector.sector, true)
+											end
+										end
+									end
 								end
 							else
 								P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[1] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[1] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
@@ -3743,17 +4024,34 @@ addHook("MobjThinker", function(mobj)
 						P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[4] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[4] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
 						if not mobj.parent.insideflag then
 							if P_TryMove(mobj, mobj.x + mobj.parent.cosdirections[4] * 6, mobj.y + mobj.parent.sindirections[4] * 6, true) == false then
-								if mobj.playerparent.speed/FRACUNIT < 70 then // FORGOT TO UPDATE THE VALUES ON ALL THE OTHER ONES OF THESE
-									mobj.oldmomx = mobj.playerparent.mo.momx
-									mobj.oldmomy = mobj.playerparent.mo.momy
-									P_InstaThrust(mobj.parent.parent, mobj.angle + ANGLE_270, mobj.playerparent.speed)
-								end
-								if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
-									mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
-									mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
-									PlayImpactSound(mobj)
-									mobj.impacttimer = 3 
-									mobj.parent.impacttimer = 10
+								if mobj.parent.parttype != 15 then
+									if mobj.playerparent.speed/FRACUNIT < 70 then // FORGOT TO UPDATE THE VALUES ON ALL THE OTHER ONES OF THESE
+										mobj.oldmomx = mobj.playerparent.mo.momx
+										mobj.oldmomy = mobj.playerparent.mo.momy
+										P_InstaThrust(mobj.parent.parent, mobj.angle + ANGLE_270, mobj.playerparent.speed)
+									end
+									if mobj.playerparent.speed and mobj.playerparent.speed/FRACUNIT > 10 and not mobj.impacttimer then
+										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
+										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
+										PlayImpactSound(mobj)
+										mobj.impacttimer = 3 
+										mobj.parent.impacttimer = 10
+									end
+								else
+									if mobj.playerparent.pigusingengine then
+										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
+											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
+												S_StartSound(mobj.parent.frontwall, sfx_rumble)
+											end
+											if not S_SoundPlaying(mobj.parent.frontwall, sfx_dmpain) then
+												S_StartSound(mobj.parent.frontwall, sfx_dmpain)
+											end
+											if not mobj.playerparent.pigwalldrilltimer then
+												DrillWallCheck(mobj, mobj.subsector.sector, true)
+											end
+										end
+									end
 								end
 							else
 								P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[4] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[4] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
