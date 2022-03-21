@@ -73,6 +73,7 @@ freeslot(
 	"mt_piggrid",
 	"mt_pigvehiclegrid",
 	"mt_piggridwall",
+	"mt_piggoldegg",
 	"sfx_pigve1", // vehicle builder sound effects
 	"sfx_pigve2",
 	//"sfx_pigve3",
@@ -151,7 +152,8 @@ freeslot(
 	"sfx_piga18",
 	"sfx_piga19",
 	"sfx_pigfs1", // fan sound effects
-	"sfx_pigfs2"
+	"sfx_pigfs2",
+	"sfx_pgegg" // golden egg collect
 )
 
 FNT_NewFont("FONT_PIGBIG", {
@@ -179,7 +181,7 @@ local pigmaploadflag = 0
 local pigmapchangeflag = 0
 
 // first time im ever doing these because im sick of having to change multiple things at once when adding a part
-local NUM_PARTS = 15
+local NUM_PARTS = 16
 
 local pigpartweights = {
 	2, // wood
@@ -197,7 +199,8 @@ local pigpartweights = {
 	2, // wing
 	5, // v8
 	1, // rudder 
-	4 // drill
+	4, // drill
+	9 // air tank
 }
 
 local pigpartbuoyancies = {
@@ -216,7 +219,8 @@ local pigpartbuoyancies = {
 	1, // wing
 	-1, // v8
 	1, // rudder
-	-1 // drill
+	-1, // drill
+	11 // air tank
 }
 
 // easier to just include all parts as being technically an engine rather than only engines
@@ -237,7 +241,8 @@ local pigenginestrengths = {
 	0, // wing
 	24, // v8 (sorry for making v8 break the pattern of each engine being double the last. 21 felt too slow, 28 felt too fast)
 	0, // rudder
-	0 // drill
+	0, // drill
+	0 // air tank
 }
 
 // builder stuff
@@ -257,7 +262,8 @@ local pigpartnames = {
 	"WING",
 	"V8 ENGINE",
 	"RUDDER",
-	"DRILL"
+	"DRILL",
+	"AIR TANK"
 }
 
 addHook("MapLoad", function()
@@ -4070,6 +4076,14 @@ addHook("MobjThinker", function(mobj)
 		end
 	end
 end, MT_TESTWALL)
+
+addHook("TouchSpecial", function(special, toucher)
+	if special and special.valid 
+	and toucher.player and toucher.player.valid
+	and toucher.player.mo and toucher.player.mo.valid then
+		S_StartSound(toucher.player.mo, sfx_pgegg)
+	end
+end, MT_PIGGOLDEGG)
 
 addHook("ShouldJingleContinue", function(player, musname)
 	if true return end

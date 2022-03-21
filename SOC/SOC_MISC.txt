@@ -1,0 +1,62 @@
+Freeslot
+SPR_PLOK
+SPR_PEGG
+S_PIGEGG_IDLE_IDK
+S_PIGLOOK
+S_PIGLOOK2
+S_PIGLOOK3
+S_PIGLOOK4
+
+State S_PIGLOOK
+SpriteName = PLOK
+SpriteFrame = A
+Duration = 25
+Next = S_PIGLOOK2
+
+State S_PIGLOOK2
+SpriteName = PLOK
+SpriteFrame = B
+Duration = 25
+Next = S_PIGLOOK3
+
+State S_PIGLOOK3
+SpriteName = PLOK
+SpriteFrame = C
+Duration = 25
+Next = S_PIGLOOK4
+
+State S_PIGLOOK4
+SpriteName = PLOK
+SpriteFrame = B
+Duration = 25
+Next = S_PIGLOOK
+
+
+State S_PIGEGG_IDLE_IDK
+SpriteName = PEGG
+SpriteFrame = A
+
+Object MT_PIGGOLDEGG
+SpawnState = S_PIGEGG_IDLE_IDK
+SpawnHealth = 1000
+SeeState = S_NULL
+SeeSound = sfx_None
+ReactionTime = 0
+AttackSound = sfx_None
+PainState = S_NULL
+PainChance = 0
+PainSound = sfx_None
+MeleeState = S_NULL
+MissileState = S_NULL
+DeathState = S_SPRK1
+XDeathState = S_NULL
+DeathSound = sfx_None
+Speed = 38*FRACUNIT
+Radius = 15*FRACUNIT
+Height = 24*FRACUNIT
+DispOffset = 0
+Mass = 100
+Damage = 0
+ActiveSound = sfx_None
+Flags = MF_NOCLIP|MF_NOGRAVITY||MF_SPECIAL
+RaiseState = S_NULL
