@@ -180,6 +180,69 @@ FNT_NewFont("FONT_PIGNUMBERS", {
 local pigmaploadflag = 0
 local pigmapchangeflag = 0
 
+local egglocations = { // you are stinky for looking at this
+	7588, // gfz1
+	7266,
+	352, 
+	3045, // gfz2
+	4023,
+	1280,
+	1079, // thz1
+	4884, 
+	704,
+	4128, // thz2
+	-16,
+	512,
+	-1593, // dsz1
+	8692,
+	832,
+	14720, // dsz2
+	9539, 
+	2480,
+	-3434, // cez1
+	-12221,
+	1840,
+	-10545, // cez2
+	-7151,
+	4608,
+	-4515, // acz1
+	12485,
+	4312,
+	-2801, // acz2
+	-16847,
+	1664,
+	-7209, // rvz1
+	-6329,
+	1557,
+	-10085, // erz1
+	-8417,
+	1552,
+	1972, // erz2
+	-735,
+	544,
+	-8695, // bcz1
+	-8162,
+	464
+}
+
+local eggmapindexes = {
+	[1] = 1, // gfz1
+	[2] = 4, // gfz2
+	[4] = 7, // thz1
+	[5] = 10, // thz2
+	[7] = 13, // dsz1
+	[8] = 16, // dsz2
+	[10] = 19, // cez1
+	[11] = 22, // cez2
+	[13] = 25, // acz1
+	[14] = 28, // acz2
+	[16] = 31, // rvz1
+	[22] = 34, // erz1
+	[23] = 37, // erz2
+	[25] = 40 // bcz1
+}
+	
+
 // first time im ever doing these because im sick of having to change multiple things at once when adding a part
 local NUM_PARTS = 16
 
@@ -220,7 +283,7 @@ local pigpartbuoyancies = {
 	-1, // v8
 	1, // rudder
 	-1, // drill
-	11 // air tank
+	4 // air tank
 }
 
 // easier to just include all parts as being technically an engine rather than only engines
@@ -266,9 +329,36 @@ local pigpartnames = {
 	"AIR TANK"
 }
 
-addHook("MapLoad", function()
+// too lazy to actually reorder the parts list, so im making everything based on an order list instead
+local pigpartorder = {
+	[0] = 0, // wood
+	[1] = 1, // metal
+	[4] = 2, // drivers seat
+	[2] = 3, // wooden wheel
+	[10] = 4, // electric engine
+	[6] = 5, // mid engine
+	[13] = 6, // v8 engine
+	[11] = 7, // powered wheel
+	[3] = 8, // upwards fan
+	[5] = 9, // forwards fan
+	[9] = 10, // bottle
+	[12] = 11, // wing
+	[14] = 12, // rudder
+	[8] = 13, // barrel
+	[16] = 14, // air tank
+	[15] = 15, // drill
+	[7] = 16 // tnt
+}
+
+addHook("MapLoad", function(mapnum)
 	pigmaploadflag = 1
 	pigmapchangeflag = 0
+	
+	if eggmapindexes[mapnum] then
+		local index = eggmapindexes[mapnum]
+		local goldegg = P_SpawnMobj(egglocations[index] * FRACUNIT, egglocations[index + 1] * FRACUNIT, egglocations[index + 2]* FRACUNIT, MT_PIGGOLDEGG)
+		goldegg.angle = mapnum
+	end
 end)
 
 addHook("MapChange", function()
@@ -3459,6 +3549,40 @@ addHook("MobjThinker", function(mobj)
 							mobj.rightwall.flags = $|MF_NOCLIPHEIGHT
 							mobj.frontwall.flags = $|MF_NOCLIPHEIGHT
 							mobj.backwall.flags = $|MF_NOCLIPHEIGHT
+						elseif mobj.parttype == 16
+							mobj.frontcap = P_SpawnMobj(mobj.x, mobj.y, mobj.z, MT_TESTWALL)
+							mobj.backcap = P_SpawnMobj(mobj.x, mobj.y, mobj.z, MT_TESTWALL)
+							
+							mobj.frontcap.frame = 53
+							mobj.backcap.frame = 54
+							
+							mobj.leftwall.frame = 51|FF_TRANS70
+							mobj.rightwall.frame = 50|FF_TRANS70
+							mobj.frontwall.frame = 52|FF_TRANS70
+							mobj.backwall.frame = 52|FF_TRANS70
+							mobj.topwall.frame = 49|FF_TRANS70
+							mobj.frame = 55|FF_TRANS70
+							
+							//mobj.leftwall.blendmode = AST_ADD
+							//mobj.rightwall.blendmode = AST_ADD
+							//mobj.frontwall.blendmode = AST_ADD
+							//mobj.backwall.blendmode = AST_ADD
+							//mobj.topwall.blendmode = AST_ADD
+							//mobj.blendmode = AST_ADD
+							
+							mobj.frontcap.flags = $|MF_NOCLIPTHING
+							mobj.frontcap.renderflags = $|RF_PAPERSPRITE
+							mobj.frontcap.direction = 2
+							mobj.frontcap.parent = mobj
+							mobj.frontcap.playerparent = mobj.parent.player
+							mobj.frontcap.childflag = 1
+							
+							mobj.backcap.flags = $|MF_NOCLIPTHING
+							mobj.backcap.renderflags = $|RF_PAPERSPRITE
+							mobj.backcap.direction = 3
+							mobj.backcap.parent = mobj
+							mobj.backcap.playerparent = mobj.parent.player
+							mobj.backcap.childflag = 1
 						end
 						
 						mobj.angle = mobj.parent.player.piggridangle + mobj.angleadd
@@ -3575,6 +3699,9 @@ addHook("MobjThinker", function(mobj)
 						elseif mobj.parttype == 9 then
 							P_RemoveMobj(mobj.topframe)
 							P_RemoveMobj(mobj.bottomframe)
+						elseif mobj.parttype == 16 then
+							P_RemoveMobj(mobj.frontcap)
+							P_RemoveMobj(mobj.backcap)
 						end
 						P_RemoveMobj(mobj)
 					end
@@ -4082,6 +4209,7 @@ addHook("TouchSpecial", function(special, toucher)
 	and toucher.player and toucher.player.valid
 	and toucher.player.mo and toucher.player.mo.valid then
 		S_StartSound(toucher.player.mo, sfx_pgegg)
+		
 	end
 end, MT_PIGGOLDEGG)
 

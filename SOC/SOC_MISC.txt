@@ -58,5 +58,5 @@ DispOffset = 0
 Mass = 100
 Damage = 0
 ActiveSound = sfx_None
-Flags = MF_NOCLIP|MF_NOGRAVITY||MF_SPECIAL
+Flags = MF_NOCLIP|MF_NOGRAVITY|MF_SPECIAL
 RaiseState = S_NULL
