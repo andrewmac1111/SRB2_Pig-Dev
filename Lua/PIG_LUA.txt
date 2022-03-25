@@ -74,6 +74,7 @@ freeslot(
 	"mt_pigvehiclegrid",
 	"mt_piggridwall",
 	"mt_piggoldegg",
+	"mt_oildebris",
 	"sfx_pigve1", // vehicle builder sound effects
 	"sfx_pigve2",
 	//"sfx_pigve3",
@@ -284,6 +285,46 @@ local pigpartbuoyancies = {
 	1, // rudder
 	-1, // drill
 	4 // air tank
+}
+
+local pigpartshealth = {
+	5, // wood
+	9, // metal
+	3, // wooden wheel
+	7, // upwards fan
+	11, // seat
+	7, // forwards fan
+	7, // mid engine
+	1, // tnt
+	7, // barrel
+	3, // bottle
+	7, // electric engine
+	5, // powered wheel
+	5, // wing
+	7, // v8
+	3, // rudder
+	9, // drill
+	8 // air tank
+}
+
+local pigpartmaterials = {
+	"WOOD", // wood
+	"METAL", // metal
+	"WOOD", // wooden wheel
+	"METAL", // upwards fan
+	"WOOD", // seat
+	"METAL", // forwards fan
+	"ENGINE", // mid engine
+	"WOOD", // tnt
+	"ENGINE", // barrel
+	"METAL", // bottle
+	"MISC", // electric engine
+	"METAL", // powered wheel
+	"WOOD", // wing
+	"ENGINE", // v8
+	"WOOD", // rudder
+	"METAL", // drill
+	"METAL" // air tank
 }
 
 // easier to just include all parts as being technically an engine rather than only engines
@@ -1923,6 +1964,8 @@ addHook("ThinkFrame", function(player)
 								PlayRandomBuildSound(player)
 								player.pigpart = P_SpawnMobj(player.mo.x, player.mo.y, player.mo.z, MT_TESTWALL)
 								player.pigpart.parttype = player.pigpieceselect
+								player.pigpart.parthealth = pigpartshealth[player.pigpieceselect + 1]
+								player.pigpart.partmaterial = pigpartmaterials[player.pigpieceselect + 1]
 								
 								player.pigvehicleweight = $ + pigpartweights[player.pigpieceselect + 1]
 								player.pigvehiclebuoyancy = $ + pigpartbuoyancies[player.pigpieceselect + 1]
@@ -2065,6 +2108,8 @@ addHook("ThinkFrame", function(player)
 									PlayRandomBuildSound(player)
 									player.pigpart = P_SpawnMobj(player.mo.x, player.mo.y, player.mo.z, MT_TESTWALL)
 									player.pigpart.parttype = player.pigpieceselect
+									player.pigpart.parthealth = pigpartshealth[player.pigpieceselect + 1]
+									player.pigpart.partmaterial = pigpartmaterials[player.pigpieceselect + 1]
 									
 									player.pigvehicleweight = $ + pigpartweights[player.pigpieceselect + 1]
 									player.pigvehiclebuoyancy = $ + pigpartbuoyancies[player.pigpieceselect + 1]
@@ -2893,6 +2938,52 @@ addHook("MobjThinker", function(mobj)
 end, MT_THOK)
 
 addHook("MobjThinker", function(mobj)
+	if mobj and mobj.valid then
+		mobj.oiltimer = $ or 0
+		mobj.oiltimer = max($-1, 0)
+		mobj.alphacount = $ or 0
+		if P_IsObjectOnGround(mobj) then
+			if not mobj.grounded then
+				mobj.renderflags = $|RF_FLOORSPRITE
+				mobj.renderflags = $|RF_NOSPLATBILLBOARD
+				if mobj.standingslope then
+					P_CreateFloorSpriteSlope(mobj)
+					mobj.renderflags = $|RF_SLOPESPLAT
+					mobj.renderflags = $|RF_OBJECTSLOPESPLAT
+				end
+				mobj.grounded = 1
+			end
+			if not mobj.oiltimer then
+				mobj.oiltimer = 13
+				mobj.scale = $ + (FRACUNIT/4)
+				mobj.alphacount = $ + 1
+				if mobj.alphacount == 1 then
+					mobj.frame = A|FF_TRANS10
+				elseif mobj.alphacount == 2 then
+					mobj.frame = A|FF_TRANS20
+				elseif mobj.alphacount == 3 then
+					mobj.frame = A|FF_TRANS30
+				elseif mobj.alphacount == 4 then
+					mobj.frame = A|FF_TRANS40
+				elseif mobj.alphacount == 5 then
+					mobj.frame = A|FF_TRANS50
+				elseif mobj.alphacount == 6 then
+					mobj.frame = A|FF_TRANS60
+				elseif mobj.alphacount == 7 then
+					mobj.frame = A|FF_TRANS70
+				elseif mobj.alphacount == 8 then
+					mobj.frame = A|FF_TRANS80
+				elseif mobj.alphacount == 9 then
+					mobj.frame = A|FF_TRANS90
+				elseif mobj.alphacount == 10 then
+					P_RemoveMobj(mobj)
+				end
+			end
+		end
+	end
+end, MT_OILDEBRIS)
+
+addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker you'll ever see
 	if mobj.valid 
 	and mobj.parent and mobj.parent.valid then
 		if not mobj.angleadd then
@@ -3256,6 +3347,101 @@ addHook("MobjThinker", function(mobj)
 						mobj.angle = mobj.parent.player.drawangle + mobj.angleadd
 						mobj.flags2 = $&~MF2_DONTDRAW
 						mobj.frame = $&~FF_TRANS50
+						
+						if mobj.parthealth <= 0 then
+							for i = 1, #mobj.parent.player.pigplacedparts
+								if mobj.parent.player.pigplacedparts[i] == mobj then
+									if mobj.parttype == 4 then
+										local seatpos = { // i have no idea if you can change formatting, but im too lazy to change it even though i hate it
+											mobj.x,
+											mobj.y,
+											mobj.z
+										}
+										mobj.parent.player.pigcarmode = 0 // no more fun
+										mobj.parent.player.pigcameraflag = 1
+										
+										for j = 1, #mobj.parent.player.pigplacedparts
+											local deathexplode = P_SpawnMobj(mobj.parent.player.pigplacedparts[j].x, mobj.parent.player.pigplacedparts[j].y, mobj.parent.player.pigplacedparts[j].z, MT_EXPLODE)
+											deathexplode.scale = P_RandomRange(1, 2)*FRACUNIT
+
+											for k = 0, P_RandomRange(3, 5)
+												local deathcloud = P_SpawnMobj(mobj.parent.player.pigplacedparts[j].x + P_RandomRange(-20, 20)*FRACUNIT, mobj.parent.player.pigplacedparts[j].y + P_RandomRange(-20, 20)*FRACUNIT, mobj.parent.player.pigplacedparts[j].z + P_RandomRange(-10, 10)*FRACUNIT, MT_TNTDUST)
+												deathcloud.frame = A|(FF_TRANS10 + (P_RandomRange(2, 7)*FRACUNIT))
+												deathcloud.scale = FRACUNIT/P_RandomRange(1, 3)
+												deathcloud.blendmode = AST_ADD
+											end
+											
+											for k = 0, P_RandomRange(1, 4)
+												local deathdebris
+												if mobj.parent.player.pigplacedparts[j].partmaterial == "WOOD" then
+													deathdebris = P_SpawnMobj(mobj.parent.player.pigplacedparts[j].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].z + (P_RandomRange(0, 30)*FRACUNIT), MT_WOODDEBRIS)
+												elseif mobj.parent.player.pigplacedparts[j].partmaterial == "ENGINE"
+													deathdebris = P_SpawnMobj(mobj.parent.player.pigplacedparts[j].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].z + (P_RandomRange(0, 30)*FRACUNIT), MT_WOODDEBRIS)
+												else
+													deathdebris = P_SpawnMobj(mobj.parent.player.pigplacedparts[j].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].z + (P_RandomRange(0, 30)*FRACUNIT), MT_WOODDEBRIS)
+												end
+												deathdebris.momx = P_RandomRange(-6, 6)*FRACUNIT
+												deathdebris.momy = P_RandomRange(-6, 6)*FRACUNIT
+												deathdebris.momz = P_RandomRange(-3, 12)*FRACUNIT
+												deathdebris.scale = ($ * P_RandomRange(1, 2))/P_RandomRange(1, 3)
+											end
+											
+											if mobj.parent.player.pigplacedparts[j].partmaterial == "ENGINE" then
+												for k = 0, P_RandomRange(4, 9)
+													local deathoil = P_SpawnMobj(mobj.parent.player.pigplacedparts[j].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[j].z + (P_RandomRange(0, 30)*FRACUNIT), MT_OILDEBRIS)
+													deathoil.momx = P_RandomRange(-4, 4)*FRACUNIT
+													deathoil.momy = P_RandomRange(-4, 4)*FRACUNIT
+													deathoil.momz = P_RandomRange(-4, 6)*FRACUNIT
+													deathoil.scale = $/P_RandomRange(2, 4)
+												end
+											end		
+										end
+										
+										table.remove(mobj.parent.player.pigplacedparts, i) // remove me from the list big idiot
+										mobj.parent.player.pigdestroyallparts = 1 
+										P_TeleportMove(mobj.parent, seatpos[1], seatpos[2], seatpos[3] + (15*FRACUNIT))
+										// destroy the whole vehicle if the seat gets destroyed. legit what else would i do
+									else
+										local deathexplode = P_SpawnMobj(mobj.parent.player.pigplacedparts[i].x, mobj.parent.player.pigplacedparts[i].y, mobj.parent.player.pigplacedparts[i].z, MT_EXPLODE)
+										deathexplode.scale = P_RandomRange(1, 2)*FRACUNIT
+
+										for k = 0, P_RandomRange(3, 7)
+											local deathcloud = P_SpawnMobj(mobj.parent.player.pigplacedparts[i].x + P_RandomRange(-20, 20)*FRACUNIT, mobj.parent.player.pigplacedparts[i].y + P_RandomRange(-20, 20)*FRACUNIT, mobj.parent.player.pigplacedparts[i].z + P_RandomRange(-10, 10)*FRACUNIT, MT_TNTDUST)
+											deathcloud.frame = A|(FF_TRANS10 + (P_RandomRange(2, 7)*FRACUNIT))
+											deathcloud.scale = FRACUNIT/P_RandomRange(1, 3)
+											deathcloud.blendmode = AST_ADD
+										end
+										
+										for k = 0, P_RandomRange(1, 6)
+											local deathdebris
+											if mobj.parent.player.pigplacedparts[i].partmaterial == "WOOD" then
+												deathdebris = P_SpawnMobj(mobj.parent.player.pigplacedparts[i].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].z + (P_RandomRange(0, 30)*FRACUNIT), MT_WOODDEBRIS)
+											elseif mobj.parent.player.pigplacedparts[i].partmaterial == "ENGINE" then
+												deathdebris = P_SpawnMobj(mobj.parent.player.pigplacedparts[i].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].z + (P_RandomRange(0, 30)*FRACUNIT), MT_WOODDEBRIS)
+											else
+												deathdebris = P_SpawnMobj(mobj.parent.player.pigplacedparts[i].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].z + (P_RandomRange(0, 30)*FRACUNIT), MT_WOODDEBRIS)
+											end
+											deathdebris.momx = P_RandomRange(-6, 6)*FRACUNIT
+											deathdebris.momy = P_RandomRange(-6, 6)*FRACUNIT
+											deathdebris.momz = P_RandomRange(-3, 6)*FRACUNIT
+											deathdebris.scale = ($ * P_RandomRange(1, 2))/P_RandomRange(1, 3)
+										end
+										
+										if mobj.parent.player.pigplacedparts[i].partmaterial == "ENGINE" then
+											for k = 0, P_RandomRange(4, 9)
+												local deathoil = P_SpawnMobj(mobj.parent.player.pigplacedparts[i].x + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].y + (P_RandomRange(0, 30)*FRACUNIT), mobj.parent.player.pigplacedparts[i].z + (P_RandomRange(0, 30)*FRACUNIT), MT_OILDEBRIS)
+												deathoil.momx = P_RandomRange(-4, 4)*FRACUNIT
+												deathoil.momy = P_RandomRange(-4, 4)*FRACUNIT
+												deathoil.momz = P_RandomRange(-4, 6)*FRACUNIT
+												deathoil.scale = $/P_RandomRange(2, 4)
+											end
+										end	
+										table.remove(mobj.parent.player.pigplacedparts, i)
+									end
+									mobj.kill = 1 // hi im dead now
+								end
+							end
+						end
 					end
 					
 					mobj.impacttimer = $ or 0
@@ -4053,12 +4239,26 @@ addHook("MobjThinker", function(mobj)
 										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
 										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
 										PlayImpactSound(mobj)
+										if mobj.playerparent.speed/FRACUNIT >= 15 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 25 then // faster speed, more damage
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 35 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 45 then
+											mobj.parent.parthealth = $ - 1
+										end
 										mobj.impacttimer = 3 
 										mobj.parent.impacttimer = 10
 									end
 								else
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
+											mobj.playerparent.mo.momx = $ - ($/10)
+											mobj.playerparent.mo.momy = $ - ($/10)
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
@@ -4091,6 +4291,18 @@ addHook("MobjThinker", function(mobj)
 										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
 										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
 										PlayImpactSound(mobj)
+										if mobj.playerparent.speed/FRACUNIT >= 15 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 25 then // faster speed, more damage
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 35 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 45 then
+											mobj.parent.parthealth = $ - 1
+										end
 										mobj.impacttimer = 3
 										mobj.parent.impacttimer = 10
 									end
@@ -4098,6 +4310,8 @@ addHook("MobjThinker", function(mobj)
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
+											mobj.playerparent.mo.momx = $ - ($/10)
+											mobj.playerparent.mo.momy = $ - ($/10)
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
 											end
@@ -4129,6 +4343,18 @@ addHook("MobjThinker", function(mobj)
 										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
 										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
 										PlayImpactSound(mobj)
+										if mobj.playerparent.speed/FRACUNIT >= 15 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 25 then // faster speed, more damage
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 35 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 45 then
+											mobj.parent.parthealth = $ - 1
+										end
 										mobj.impacttimer = 3 
 										mobj.parent.impacttimer = 10
 									end
@@ -4136,6 +4362,8 @@ addHook("MobjThinker", function(mobj)
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
+											mobj.playerparent.mo.momx = $ - ($/10)
+											mobj.playerparent.mo.momy = $ - ($/10)
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
 											end
@@ -4167,6 +4395,18 @@ addHook("MobjThinker", function(mobj)
 										mobj.playerparent.mo.momx = $ + (mobj.oldmomx/3)
 										mobj.playerparent.mo.momy = $ + (mobj.oldmomy/3)
 										PlayImpactSound(mobj)
+										if mobj.playerparent.speed/FRACUNIT >= 15 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 25 then // faster speed, more damage
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 35 then
+											mobj.parent.parthealth = $ - 1
+										end
+										if mobj.playerparent.speed/FRACUNIT >= 45 then
+											mobj.parent.parthealth = $ - 1
+										end
 										mobj.impacttimer = 3 
 										mobj.parent.impacttimer = 10
 									end
@@ -4174,6 +4414,8 @@ addHook("MobjThinker", function(mobj)
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
+											mobj.playerparent.mo.momx = $ - ($/10)
+											mobj.playerparent.mo.momy = $ - ($/10)
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
 											end

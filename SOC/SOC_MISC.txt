@@ -1,11 +1,13 @@
 Freeslot
 SPR_PLOK
 SPR_PEGG
+SPR_OILP
 S_PIGEGG_IDLE_IDK
 S_PIGLOOK
 S_PIGLOOK2
 S_PIGLOOK3
 S_PIGLOOK4
+S_OILDEBRIS
 
 State S_PIGLOOK
 SpriteName = PLOK
@@ -59,4 +61,34 @@ Mass = 100
 Damage = 0
 ActiveSound = sfx_None
 Flags = MF_NOCLIP|MF_NOGRAVITY|MF_SPECIAL
+RaiseState = S_NULL
+
+
+State S_OILDEBRIS
+SpriteName = OILP
+SpriteFrame = A
+
+Object MT_OILDEBRIS
+SpawnState = S_OILDEBRIS
+SpawnHealth = 1
+SeeState = S_NULL
+SeeSound = sfx_None
+ReactionTime = 0
+AttackSound = sfx_None
+PainState = S_NULL
+PainChance = 0
+PainSound = sfx_None
+MeleeState = S_NULL
+MissileState = S_NULL
+DeathState = S_NULL
+XDeathState = S_NULL
+DeathSound = sfx_None
+Speed = 20*FRACUNIT
+Radius = 16*FRACUNIT
+Height = 32*FRACUNIT
+DispOffset = 0
+Mass = 100
+Damage = 0
+ActiveSound = sfx_None
+Flags = MF_NOCLIPTHING|MF_SCENERY
 RaiseState = S_NULL
