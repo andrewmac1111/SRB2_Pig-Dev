@@ -66,7 +66,7 @@ RaiseState = S_NULL
 
 State S_OILDEBRIS
 SpriteName = OILP
-SpriteFrame = A
+SpriteFrame = B
 
 Object MT_OILDEBRIS
 SpawnState = S_OILDEBRIS
