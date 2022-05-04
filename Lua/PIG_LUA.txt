@@ -246,7 +246,7 @@ local eggmapindexes = {
 	
 
 // first time im ever doing these because im sick of having to change multiple things at once when adding a part
-local NUM_PARTS = 16
+local NUM_PARTS = 19
 
 local pigpartweights = {
 	2, // wood
@@ -265,7 +265,10 @@ local pigpartweights = {
 	5, // v8
 	1, // rudder 
 	4, // drill
-	9 // air tank
+	9, // air tank
+	3, // downwards blue spring
+	3, // downwards yellow spring
+	3 // downwards red spring
 }
 
 local pigpartbuoyancies = {
@@ -285,7 +288,10 @@ local pigpartbuoyancies = {
 	-1, // v8
 	1, // rudder
 	-1, // drill
-	4 // air tank
+	4, // air tank
+	1, // downwards blue spring
+	1, // downwards yellow spring
+	1 // downwards red spring
 }
 
 local pigpartshealth = {
@@ -305,7 +311,10 @@ local pigpartshealth = {
 	8, // v8
 	4, // rudder
 	10, // drill
-	9 // air tank
+	9, // air tank
+	4, // downwards blue spring
+	4, // downwards yellow spring
+	4 // downwards red spring
 }
 
 local pigpartmaterials = {
@@ -325,7 +334,10 @@ local pigpartmaterials = {
 	"ENGINE", // v8
 	"WOOD", // rudder
 	"METAL", // drill
-	"METAL" // air tank
+	"METAL", // air tank
+	"METAL", // downwards blue spring
+	"METAL", // downwards yellow spring
+	"METAL" // downwards red spring
 }
 
 // easier to just include all parts as being technically an engine rather than only engines
@@ -347,7 +359,10 @@ local pigenginestrengths = {
 	24, // v8 (sorry for making v8 break the pattern of each engine being double the last. 21 felt too slow, 28 felt too fast)
 	0, // rudder
 	0, // drill
-	0 // air tank
+	0, // air tank
+	0, // downwards blue spring
+	0, // downwards yellow spring
+	0 // downwards red spring
 }
 
 // builder stuff
@@ -368,7 +383,10 @@ local pigpartnames = {
 	"V8 ENGINE",
 	"RUDDER",
 	"DRILL",
-	"AIR TANK NOT WORKING YET"
+	"AIR TANK NOT WORKING YET",
+	"DOWNWARDS BLUE SPRING",
+	"DOWNWARDS YELLOW SPRING",
+	"DOWNWARDS RED SPRING"
 }
 
 // too lazy to actually reorder the parts list, so im making everything based on an order list instead
@@ -624,6 +642,87 @@ addHook("ThinkFrame", function(player)
 					hud.enable("weaponrings")
 					hud.enable("powerstones")
 					hud.enable("lives")
+					
+					player.pigcarmode = 0
+					player.pigconnectedparts = {}
+					player.pigconnectedpartsearchtimer = 6
+					player.pigconnectedpartsearchflag = 1
+					player.pigwarningdotclear = 1
+					if player.pigplacedparts then
+						if player.pigseatflag then
+							for i = 1, #player.pigplacedparts
+								if player.pigplacedparts[i] and player.pigplacedparts[i].valid then
+									if player.pigplacedparts[i].parttype == 4 then
+										player.pigplacedparts[i].checkneighbors = 1
+									end
+								end
+							end
+						end
+					end
+					player.pigseatflag = 0
+					player.pigvehiclerudderflag = 0
+					player.pigpowerwheelflag = 0
+					player.pigtntflag = 0
+					player.pigdestroyindex = #player.pigplacedparts
+					player.pigvehicleweight = 0
+					player.pigvehiclebuoyancy = 0
+					player.pigvehiclepower = 0
+					player.pigupwardsfancount = 0
+					player.pigwingcount = 0
+					player.pigelectricenginecount = 0
+					player.pigmidenginecount = 0
+					player.pigv8count = 0
+					if #player.pigplacedparts > 0 then
+						if player.pigplacedparts[player.pigdestroyindex].valid then
+							//print("poop")
+						
+							player.pigplacedparts[player.pigdestroyindex].kill = 1
+							table.remove(player.pigplacedparts, player.pigdestroyindex)
+							
+							if #player.pigplacedparts > 1 then
+								player.pigplacedparts[player.pigdestroyindex-1].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex-1)
+							end
+							if #player.pigplacedparts > 2 then
+								player.pigplacedparts[player.pigdestroyindex - 2].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 2)
+							end
+							if #player.pigplacedparts > 3 then
+								player.pigplacedparts[player.pigdestroyindex - 3].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 3)
+							end
+							if #player.pigplacedparts > 4 then
+								player.pigplacedparts[player.pigdestroyindex - 4].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 4)
+							end
+							if #player.pigplacedparts > 5 then
+								player.pigplacedparts[player.pigdestroyindex - 5].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 5)
+							end
+							if #player.pigplacedparts > 6 then
+								player.pigplacedparts[player.pigdestroyindex - 6].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 6)
+							end
+							if #player.pigplacedparts > 7 then
+								player.pigplacedparts[player.pigdestroyindex - 7].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 7)
+							end
+							if #player.pigplacedparts > 8 then
+								player.pigplacedparts[player.pigdestroyindex - 8].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 8)
+							end
+							if #player.pigplacedparts > 9 then
+								player.pigplacedparts[player.pigdestroyindex - 9].kill = 1
+								table.remove(player.pigplacedparts, player.pigdestroyindex - 9)
+							end
+							
+							player.pigdestroyindex = #player.pigplacedparts
+						end
+					else
+						player.pigdestroyallparts = 0
+						player.pigdestroyindex = nil
+					end
+				
 					player.youarepig = 0
 				end
 				continue
@@ -665,6 +764,12 @@ addHook("ThinkFrame", function(player)
 			
 			player.pigwalldrilltimer = $ or 0
 			player.pigwalldrilltimer = min($+1, 30)
+			
+			if (player.mo.eflags & MFE_JUSTHITFLOOR) then
+				player.pigjusthitground = 1
+			else
+				player.pigjusthitground = 0
+			end
 			
 			if player.pigcarmode then
 				if player.oldmomz != nil then
@@ -1230,8 +1335,10 @@ addHook("ThinkFrame", function(player)
 				if player.pigplacedparts then
 					if player.pigseatflag then
 						for i = 1, #player.pigplacedparts
-							if player.pigplacedparts[i].parttype == 4 then
-								player.pigplacedparts[i].checkneighbors = 1
+							if player.pigplacedparts[i] and player.pigplacedparts[i].valid then
+								if player.pigplacedparts[i].parttype == 4 then
+									player.pigplacedparts[i].checkneighbors = 1
+								end
 							end
 						end
 					end
@@ -3037,6 +3144,20 @@ addHook("MobjThinker", function(mobj)
 	end
 end, MT_OILDEBRIS)
 
+addHook("MobjCollide", function(thing, tmthing)
+	if thing and thing.valid 
+	and tmthing and tmthing.valid 
+	and thing.playerparent and thing.playerparent.valid 
+	and thing.playerparent.mo and thing.playerparent.mo.valid 
+	and tmthing.playerparent and tmthing.playerparent.valid 
+	and tmthing.playerparent.mo and tmthing.playerparent.mo.valid then
+		if tmthing.type == MT_TESTWALL and thing.type == MT_TESTWALL 
+		and tmthing.playerparent == thing.playerparent then // only reject collisions if the part is from the same player
+			return false
+		end
+	end
+end, MT_TESTWALL)
+
 addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker you'll ever see
 	if mobj.valid 
 	and mobj.parent and mobj.parent.valid then
@@ -3824,32 +3945,72 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 							mobj.backcap.parent = mobj
 							mobj.backcap.playerparent = mobj.parent.player
 							mobj.backcap.childflag = 1
+						elseif mobj.parttype == 17 or mobj.parttype == 18 or mobj.parttype == 19
+							mobj.spring = P_SpawnMobj(mobj.x, mobj.y, mobj.z, MT_TESTWALL)
+							mobj.spring.childflag = 1
+							mobj.spring.direction = 69
+							mobj.spring.playerparent = mobj.parent.player
+							mobj.spring.parent = mobj
+							mobj.spring.flags = $|MF_NOCLIPTHING
+							mobj.spring.heightscale = -32
+							mobj.spring.renderflags = $|RF_VERTICALFLIP
+								
+							if mobj.parttype == 17 then
+								mobj.spring.springtype = 1 // blue
+								mobj.spring.state = S_BLUESPRING
+							elseif mobj.parttype == 18 then
+								mobj.spring.springtype = 2 // yellow
+								mobj.spring.state = S_YELLOWSPRING
+							else
+								mobj.spring.springtype = 3 // red
+								mobj.spring.state = S_REDSPRING
+							end
+							
+							mobj.heightadd = 26
+							P_TeleportMove(mobj, mobj.x, mobj.y, mobj.z + (mobj.heightadd * FRACUNIT)) // adjust in editor so that it shows the correct height
+							mobj.leftwall.heightscale = -3
+							mobj.rightwall.heightscale = -3
+							mobj.frontwall.heightscale = -3
+							mobj.backwall.heightscale = -3
+							mobj.topwall.heightscale = 20
+							
+							mobj.leftwall.frame = 56
+							mobj.rightwall.frame = 56
+							mobj.frontwall.frame = 56
+							mobj.backwall.frame = 56
+							mobj.topwall.frame = E
+							mobj.frame = F
 						end
 						
 						mobj.angle = mobj.parent.player.piggridangle + mobj.angleadd
 						
-						mobj.leftwall.flags = $|MF_NOCLIPTHING // dont remove this until i find a way to fix stupid dumb dumb collision
+						//mobj.leftwall.flags = $|MF_NOCLIPTHING // dont remove this until i find a way to fix stupid dumb dumb collision
+						// found the way to fix the dumb dumb collision
+						mobj.leftwall.flags = $|MF_SOLID
 						mobj.leftwall.renderflags = $|RF_PAPERSPRITE
 						mobj.leftwall.direction = 0
 						mobj.leftwall.parent = mobj
 						mobj.leftwall.playerparent = mobj.parent.player
 						mobj.leftwall.childflag = 1
 						
-						mobj.rightwall.flags = $|MF_NOCLIPTHING
+						//mobj.rightwall.flags = $|MF_NOCLIPTHING
+						mobj.rightwall.flags = $|MF_SOLID
 						mobj.rightwall.renderflags = $|RF_PAPERSPRITE
 						mobj.rightwall.direction = 1
 						mobj.rightwall.parent = mobj
 						mobj.rightwall.playerparent = mobj.parent.player
 						mobj.rightwall.childflag = 1
 						
-						mobj.frontwall.flags = $|MF_NOCLIPTHING
+						//mobj.frontwall.flags = $|MF_NOCLIPTHING
+						mobj.frontwall.flags = $|MF_SOLID
 						mobj.frontwall.renderflags = $|RF_PAPERSPRITE
 						mobj.frontwall.direction = 2
 						mobj.frontwall.parent = mobj
 						mobj.frontwall.playerparent = mobj.parent.player
 						mobj.frontwall.childflag = 1
 						
-						mobj.backwall.flags = $|MF_NOCLIPTHING
+						//mobj.backwall.flags = $|MF_NOCLIPTHING
+						mobj.backwall.flags = $|MF_SOLID
 						if mobj.parttype != 15 then
 							mobj.backwall.renderflags = $|RF_PAPERSPRITE
 						end
@@ -3858,7 +4019,8 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 						mobj.backwall.playerparent = mobj.parent.player
 						mobj.backwall.childflag = 1
 						
-						mobj.topwall.flags = $|MF_NOCLIPTHING
+						//mobj.topwall.flags = $|MF_NOCLIPTHING
+						mobj.topwall.flags = $|MF_SOLID
 						mobj.topwall.renderflags = $|RF_FLOORSPRITE
 						mobj.topwall.renderflags = $|RF_NOSPLATBILLBOARD
 						mobj.topwall.flags = $&~MF_PAPERCOLLISION
@@ -3943,6 +4105,8 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 						elseif mobj.parttype == 16 then
 							P_RemoveMobj(mobj.frontcap)
 							P_RemoveMobj(mobj.backcap)
+						elseif mobj.parttype == 17 or mobj.parttype == 18 or mobj.parttype == 19 then
+							P_RemoveMobj(mobj.spring)
 						end
 						P_RemoveMobj(mobj)
 					end
@@ -4278,7 +4442,7 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 				if not mobj.oldmomy then
 					mobj.oldmomy = 1
 				end
-				if not (mobj.renderflags & RF_FLOORSPRITE) then
+				if (not (mobj.renderflags & RF_FLOORSPRITE)) or mobj.springtype then
 					if mobj.direction == 0 then
 						mobj.angle = mobj.parent.angle + mobj.angleadd
 						P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[2] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[2] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
@@ -4312,8 +4476,12 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 								else
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
-											mobj.playerparent.mo.momx = $ - ($/10)
-											mobj.playerparent.mo.momy = $ - ($/10)
+											if mobj.playerparent.mo.momx then
+												mobj.playerparent.mo.momx = $ - ($/10)
+											end
+											if mobj.playerparent.mo.momy then
+												mobj.playerparent.mo.momy = $ - ($/10)
+											end
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
@@ -4365,8 +4533,12 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
-											mobj.playerparent.mo.momx = $ - ($/10)
-											mobj.playerparent.mo.momy = $ - ($/10)
+											if mobj.playerparent.mo.momx then
+												mobj.playerparent.mo.momx = $ - ($/10)
+											end
+											if mobj.playerparent.mo.momy then
+												mobj.playerparent.mo.momy = $ - ($/10)
+											end
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
 											end
@@ -4417,8 +4589,12 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
-											mobj.playerparent.mo.momx = $ - ($/10)
-											mobj.playerparent.mo.momy = $ - ($/10)
+											if mobj.playerparent.mo.momx then
+												mobj.playerparent.mo.momx = $ - ($/10)
+											end
+											if mobj.playerparent.mo.momy then
+												mobj.playerparent.mo.momy = $ - ($/10)
+											end
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
 											end
@@ -4469,8 +4645,12 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 									if mobj.playerparent.pigusingengine then
 										if DrillWallCheck(mobj, mobj.subsector.sector, false) then
 											mobj.playerparent.pigwalldrilltimer = max($-1, 0)
-											mobj.playerparent.mo.momx = $ - ($/10)
-											mobj.playerparent.mo.momy = $ - ($/10)
+											if mobj.playerparent.mo.momx then
+												mobj.playerparent.mo.momx = $ - ($/10)
+											end
+											if mobj.playerparent.mo.momy then
+												mobj.playerparent.mo.momy = $ - ($/10)
+											end
 											if not S_SoundPlaying(mobj.parent.frontwall, sfx_rumble) then
 												S_StartSound(mobj.parent.frontwall, sfx_rumble)
 											end
@@ -4486,6 +4666,23 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 							else
 								P_TeleportMove(mobj, mobj.parent.x + mobj.parent.cosdirections[4] * mobj.distancescale, mobj.parent.y + mobj.parent.sindirections[4] * mobj.distancescale, mobj.parent.z + ((mobj.heightscale*FRACUNIT) * P_MobjFlip(mobj.playerparent.mo)))
 							end
+						end
+					elseif mobj.direction == 69 // boing
+						mobj.angle = mobj.parent.angle + mobj.angleadd
+						P_TeleportMove(mobj, mobj.parent.x, mobj.parent.y, mobj.parent.z + mobj.heightscale*FRACUNIT)
+						if mobj.playerparent.pigjusthitground or P_IsObjectOnGround(mobj.playerparent.mo) then
+							if mobj.springtype == 1 then
+								mobj.state = S_BLUESPRING2
+								//A_ZThrust(mobj.playerparent.mo, , 0)
+								P_SetObjectMomZ(mobj.playerparent.mo, 8*FRACUNIT, false) // MULTIPLY BY FRACUNIT IDIOT
+							elseif mobj.springtype == 2 then
+								mobj.state = S_YELLOWSPRING2
+								P_SetObjectMomZ(mobj.playerparent.mo, 16*FRACUNIT, false)
+							else
+								mobj.state = S_REDSPRING2
+								P_SetObjectMomZ(mobj.playerparent.mo, 24*FRACUNIT, false)
+							end
+							S_StartSound(mobj, sfx_spring)
 						end
 					end
 				else
