@@ -1443,6 +1443,7 @@ addHook("ThinkFrame", function(player)
 			end
 			
 			if player.pigbuild then
+				
 				player.mo.flags = $|MF_NOCLIPTHING
 				//player.pflags = $|PF_FULLSTASIS
 				if player == displayplayer
@@ -4811,6 +4812,20 @@ local function preThinkFrame()
 			
 			player.pigcarsidemove = $ or 0
 			player.pigcarforwardmove = $ or 0
+			
+			if player.pigbuild then // awesome bodge
+				local forwardmove = player.cmd.forwardmove
+				local sidemove = player.cmd.sidemove
+
+				if ((player.cmd.angleturn - (ANGLE_45/FRACUNIT))/360 > 22 and (player.cmd.angleturn - (ANGLE_45/FRACUNIT))/360 < 68) 
+				or ((player.cmd.angleturn - (ANGLE_45/FRACUNIT))/360 > -68 and (player.cmd.angleturn - (ANGLE_45/FRACUNIT))/360 < -22) then
+					player.cmd.forwardmove = (sin(player.cmd.angleturn<<16)/(FRACUNIT/3)) * sidemove
+					player.cmd.sidemove = (cos(player.cmd.angleturn<<16)/(FRACUNIT/3)) * forwardmove
+				else
+					player.cmd.forwardmove = (sin(player.cmd.angleturn<<16)/(FRACUNIT/3)) * forwardmove
+					player.cmd.sidemove = (cos(player.cmd.angleturn<<16)/(FRACUNIT/3)) * sidemove
+				end
+			end
 			
 			if player.pigcarmode then
 				player.pigcarsidemove = player.cmd.sidemove
