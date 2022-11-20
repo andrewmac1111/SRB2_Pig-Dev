@@ -57,6 +57,8 @@
 // SMS Alfredo - attempting to help me figure out making my own car physics (i was big fail)
 // TGG/ThatGoofyGuy - gamer
 // SRB2 Community (probably you idk) - brain explosion from watching pig gameplay (it was too gamer)
+// Favman - cool new text font clean up
+// Clowfoe - randomly appeared in my DMs and inadvertently made me motivated again
 
 
 // --------------------------------------------------------------------------------------------
@@ -157,6 +159,7 @@ freeslot(
 	"sfx_pgegg", // golden egg collect
 	"sfx_pfart" // destruction sound effects
 )
+// biggest freeslot list known to man
 
 FNT_NewFont("FONT_PIGBIG", {
 	prefix = "PIGFB%03d",
@@ -182,6 +185,10 @@ FNT_NewFont("FONT_PIGNUMBERS", {
 local pigmaploadflag = 0
 local pigmapchangeflag = 0
 
+// NOTE: golden eggs disabled for first release
+// drastically toning down my ambition so i can actually get something done
+
+/*
 local egglocations = { // you are stinky for looking at this
 	7588, // gfz1
 	7266,
@@ -227,6 +234,7 @@ local egglocations = { // you are stinky for looking at this
 	464
 }
 
+
 local eggmapindexes = {
 	[1] = 1, // gfz1
 	[2] = 4, // gfz2
@@ -243,10 +251,22 @@ local eggmapindexes = {
 	[23] = 37, // erz2
 	[25] = 40 // bcz1
 }
+*/
 	
 
 // first time im ever doing these because im sick of having to change multiple things at once when adding a part
-local NUM_PARTS = 19
+local NUM_PARTS = 20
+
+// IDEA: maybe change this system to something more like this?
+// local parts = {
+// 		{ // ball
+// 			weight = 69
+//			buoyancy = 420,
+// 			health = 21,
+//			material = "DEEZNUTS",
+//			name = "BALL"
+//		}
+//}
 
 local pigpartweights = {
 	2, // wood
@@ -268,7 +288,8 @@ local pigpartweights = {
 	9, // air tank
 	3, // downwards blue spring
 	3, // downwards yellow spring
-	3 // downwards red spring
+	3, // downwards red spring
+	3 // ping pong ball launcher
 }
 
 local pigpartbuoyancies = {
@@ -291,7 +312,8 @@ local pigpartbuoyancies = {
 	4, // air tank
 	1, // downwards blue spring
 	1, // downwards yellow spring
-	1 // downwards red spring
+	1, // downwards red spring
+	1 // ping pong ball launcher
 }
 
 local pigpartshealth = {
@@ -337,7 +359,8 @@ local pigpartmaterials = {
 	"METAL", // air tank
 	"METAL", // downwards blue spring
 	"METAL", // downwards yellow spring
-	"METAL" // downwards red spring
+	"METAL", // downwards red spring
+	"METAL" // ping pong ball launcher
 }
 
 // easier to just include all parts as being technically an engine rather than only engines
@@ -362,7 +385,8 @@ local pigenginestrengths = {
 	0, // air tank
 	0, // downwards blue spring
 	0, // downwards yellow spring
-	0 // downwards red spring
+	0, // downwards red spring
+	0 // ping pong ball launcher
 }
 
 // builder stuff
@@ -386,7 +410,8 @@ local pigpartnames = {
 	"AIR TANK NOT WORKING YET",
 	"DOWNWARDS BLUE SPRING",
 	"DOWNWARDS YELLOW SPRING",
-	"DOWNWARDS RED SPRING"
+	"DOWNWARDS RED SPRING",
+	"PING PONG BALL LAUNCHER"
 }
 
 // too lazy to actually reorder the parts list, so im making everything based on an order list instead
@@ -410,15 +435,25 @@ local pigpartorder = {
 	[7] = 16 // tnt
 }
 
+// ABOVE THING IS UNUSED
+// NO IDEA IF IT WILL EVER BE USED
+
+// ITS DA CYCLE OF CODE
+
 addHook("MapLoad", function(mapnum)
 	pigmaploadflag = 1
 	pigmapchangeflag = 0
 	
+	/*
 	if eggmapindexes[mapnum] then
 		local index = eggmapindexes[mapnum]
 		local goldegg = P_SpawnMobj(egglocations[index] * FRACUNIT, egglocations[index + 1] * FRACUNIT, egglocations[index + 2]* FRACUNIT, MT_PIGGOLDEGG)
 		goldegg.angle = mapnum
 	end
+	*/
+	
+	// "I'LL BE BACK"
+	// - the piece of code above
 end)
 
 addHook("MapChange", function()
@@ -634,7 +669,7 @@ addHook("ThinkFrame", function(player)
 	for player in players.iterate do
 		if player.mo and player.mo.valid and player and player.valid then
 			if player.mo.skin ~= "pig" then
-				if player.youarepig then
+				if player.youarepig then // THIS IS THE THING THAT RUNS WHEN YOU SWAP CHARACTERS
 					hud.enable("rings")
 					hud.enable("score")
 					hud.enable("time")
@@ -643,7 +678,9 @@ addHook("ThinkFrame", function(player)
 					hud.enable("powerstones")
 					hud.enable("lives")
 					
-					player.pigcarmode = 0
+					// ANNOTATING MY CODE BECAUSE ITS BEEN MONTHS SINCE I LAST TOUCHED THIS
+					
+					player.pigcarmode = 0 // get out of the car stupid
 					player.pigconnectedparts = {}
 					player.pigconnectedpartsearchtimer = 6
 					player.pigconnectedpartsearchflag = 1
@@ -659,6 +696,7 @@ addHook("ThinkFrame", function(player)
 							end
 						end
 					end
+					
 					player.pigseatflag = 0
 					player.pigvehiclerudderflag = 0
 					player.pigpowerwheelflag = 0
@@ -672,6 +710,7 @@ addHook("ThinkFrame", function(player)
 					player.pigelectricenginecount = 0
 					player.pigmidenginecount = 0
 					player.pigv8count = 0
+					
 					if #player.pigplacedparts > 0 then
 						if player.pigplacedparts[player.pigdestroyindex].valid then
 							//print("poop")
@@ -869,7 +908,7 @@ addHook("ThinkFrame", function(player)
 						end
 					end
 				else
-					if (player.mo.eflags & MFE_TOUCHWATER or player.mo.eflags & MFE_UNDERWATER) or (player.pigupwardsfancount and not (P_IsObjectOnGround(player.mo))) then // only rotate in the air if you have an upwards fan (and rudder)
+					if (player.mo.eflags & MFE_TOUCHWATER or player.mo.eflags & MFE_UNDERWATER) or (player.pigvehiclerudderflag and not (P_IsObjectOnGround(player.mo))) then // only rotate in the air if you have a rudder
 						if (player.pigcarsidemove > -25) and not (player.pigcarsidemove == 0) then
 							if (player.speed > 0) then
 								player.pigcarangle = $ - (FixedAngle(1*FRACUNIT))
@@ -3981,6 +4020,13 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 							mobj.backwall.frame = 56
 							mobj.topwall.frame = E
 							mobj.frame = F
+						elseif mobj.parttype == 20 then
+							mobj.leftwall.frame = A
+							mobj.rightwall.frame = A
+							mobj.frontwall.frame = A
+							mobj.backwall.frame = A
+							mobj.topwall.frame = B
+							mobj.frame = C
 						end
 						
 						mobj.angle = mobj.parent.player.piggridangle + mobj.angleadd
@@ -4053,6 +4099,8 @@ addHook("MobjThinker", function(mobj) // get ready for the biggest mobj thinker 
 					else
 						mobj.fanflag = 0
 					end
+					
+					
 					
 					if (mobj.frontwall.frame == J 
 						or mobj.frontwall.frame == K 
